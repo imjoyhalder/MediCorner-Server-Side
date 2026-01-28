@@ -1,32 +1,76 @@
-import { NextFunction, Request, Response } from "express";
-import { AppError } from "../../errors/AppError";
-import { OrderServices } from "./placeOrder.service";
+// src/modules/order/order.controller.ts
+import { Request, Response, NextFunction } from 'express';
+import { OrderServices } from './placeOrder.service';
 
-const placeOrder = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-) => {
+const placeOrder = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        if (!req.user) {
-            throw new AppError(401, "Unauthorized");
-        }
+        const userId = req.user?.id!;
+        const payload = req.body;
 
-        const result = await OrderServices.placeOrder(
-            req.user.id,
-            req.body
-        );
+        const result = await OrderServices.placeOrder(userId, payload);
+        res.status(result.statusCode).json(result);
+    } catch (error: any) {
+        next(error);
+    }
+};
 
-        res.status(201).json({
-            success: true,
-            message: "Order placed successfully (Cash on Delivery)",
-            data: result,
-        });
-    } catch (error) {
+const getMyOrders = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.user?.id!;
+        const result = await OrderServices.getMyOrders(userId);
+        res.status(result.statusCode).json(result);
+    } catch (error: any) {
+        next(error);
+    }
+};
+
+const cancelOrder = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.user?.id!;
+        const orderId = req.params.id;
+        const result = await OrderServices.cancelOrder(userId, orderId as string);
+        res.status(result.statusCode).json(result);
+    } catch (error: any) {
+        next(error);
+    }
+};
+
+const getSellerOrders = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const sellerId = req.user?.id!;
+        const result = await OrderServices.getSellerOrders(sellerId);
+        res.status(result.statusCode).json(result);
+    } catch (error: any) {
+        next(error);
+    }
+};
+
+const updateOrderStatus = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const sellerId = req.user?.id!;
+        const orderId = req.params.id;
+        const status = req.body.status;
+        const result = await OrderServices.updateOrderStatus(sellerId, orderId as string, status);
+        res.status(result.statusCode).json(result);
+    } catch (error: any) {
+        next(error);
+    }
+};
+
+const getAllOrders = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const result = await OrderServices.getAllOrders();
+        res.status(result.statusCode).json(result);
+    } catch (error: any) {
         next(error);
     }
 };
 
 export const orderController = {
+    getAllOrders, 
+    updateOrderStatus, 
+    getSellerOrders, 
+    cancelOrder, 
+    getMyOrders, 
     placeOrder
 }
