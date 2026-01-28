@@ -2,14 +2,14 @@ import express, { Application, Request, Response } from "express"
 import { auth } from "./lib/auth";
 import cors from "cors"
 
-
 import { toNodeHandler } from "better-auth/node";
 import { medicineRouter } from "./modules/medicine/medicine.router";
-import { reviewRouter } from "./modules/review/review.router";
-import { userRouter } from "./modules/user/user.router";
+import { reviewRouter } from "./modules/review/review.route";
+import {  userRouter } from "./modules/user/user.route";
 import errorHandler from "./middlewares/errorHandler";
 import { medicineCategoryRoutes } from "./modules/medicineCategory/medicineCategory.route";
 import { notFound } from "./middlewares/notFound";
+import { orderRouter } from "./modules/order/placeOrder.route";
 
 const app: Application = express()
 
@@ -28,6 +28,7 @@ app.use('/medicine', medicineRouter)
 app.use('/review', reviewRouter)
 app.use('/users', userRouter)
 app.use('/categories', medicineCategoryRoutes)
+app.use('/api/v1/order', orderRouter)
 
 app.get('/', (req: Request, res: Response) => {
     res.status(200).send({

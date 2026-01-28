@@ -45,8 +45,6 @@ interface GetAllMedicinePayload {
     sortOrder: "asc" | "desc";
 }
 
-
-
 const addMedicineWithInventory = async (
     sellerId: string,
     payload: AddMedicineWithInventoryPayload
@@ -224,7 +222,6 @@ const getAllMedicines = async (payload: GetAllMedicinePayload) => {
         },
     };
 };
-
 
 const getSingleMedicine = async (id: string) => {
     const medicine = await prisma.medicine.findUnique({

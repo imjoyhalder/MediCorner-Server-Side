@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -170,11 +169,13 @@ model CartItem {
 /// ORDER
 
 model Order {
-  id     String      @id @default(uuid())
-  total  Float
-  status OrderStatus @default(PROCESSING)
-
-  createdAt DateTime @default(now())
+  id              String      @id @default(uuid())
+  total           Float
+  status          OrderStatus @default(PROCESSING)
+  shippingAddress String
+  paymentMethod   String   @default("COD")
+  
+  createdAt       DateTime    @default(now())
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
