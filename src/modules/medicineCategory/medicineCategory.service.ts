@@ -7,7 +7,6 @@ interface CreateCategoryPayload {
 }
 
 const createCategory = async (payload: CreateCategoryPayload) => {
-    // basic safety check
     if (!payload.name || !payload.slug) {
         throw new AppError(400, "name and slug are required");
     }
@@ -32,7 +31,7 @@ const getSingleCategory = async (id: string) => {
     const category = await prisma.medicineCategory.findUnique({
         where: { id },
         include: {
-            medicines: true, // চাইলে remove করতে পারো
+            medicines: true,
         },
     });
 
@@ -43,8 +42,32 @@ const getSingleCategory = async (id: string) => {
     return category;
 };
 
+const deleteSingleCategory = async (id: string) => {
+    const category = await prisma.medicineCategory.findUnique({
+        where: { id },
+        include: {
+            medicines: true,
+        },
+    });
+
+    if (!category) {
+        throw new AppError(404, "Category not found");
+    }
+
+    const categoryDelete = await prisma.medicineCategory.delete({
+        where: { id },
+        include: {
+            medicines: true,
+        },
+    })
+
+    return categoryDelete
+
+}
+
 export const medicineCategoryService = {
     createCategory,
     getAllCategories,
     getSingleCategory,
+    deleteSingleCategory
 };

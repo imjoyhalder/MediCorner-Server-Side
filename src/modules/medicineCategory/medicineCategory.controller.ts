@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { medicineCategoryService } from "./medicineCategory.service";
 import { AppError } from "../../errors/AppError";
 
+
 const createCategory = async (
     req: Request,
     res: Response,
@@ -66,8 +67,31 @@ const getSingleCategory = async (
     }
 };
 
+const deleteSingleCategory = async (
+    req: Request,
+    res: Response,
+    next: NextFunction) => {
+    try {
+
+        const { id } = req.params;
+
+        if (!id) {
+            throw new AppError(400, "Category id is required");
+        }
+
+        const result = await medicineCategoryService.deleteSingleCategory(id as string)
+        res.status(200).json({
+            success: true,
+            data: result,
+        });
+    } catch (error) {
+        next(error)
+    }
+}
+
 export const medicineCategoryController = {
     createCategory,
     getAllCategories,
     getSingleCategory,
+    deleteSingleCategory
 };
