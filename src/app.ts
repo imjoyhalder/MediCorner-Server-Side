@@ -8,6 +8,7 @@ import { medicineRouter } from "./modules/medicine/medicine.router";
 import { reviewRouter } from "./modules/review/review.router";
 import { userRouter } from "./modules/user/user.router";
 import errorHandler from "./middlewares/errorHandler";
+import { medicineCategoryRoutes } from "./modules/medicineCategory/medicineCategory.route";
 
 const app: Application = express()
 
@@ -25,7 +26,7 @@ app.use(express.json())
 app.use('/medicine', medicineRouter)
 app.use('/review', reviewRouter)
 app.use('/users', userRouter)
-
+app.use('/categories', medicineCategoryRoutes)
 
 app.get('/', (req: Request, res: Response) => {
     res.status(200).send({
