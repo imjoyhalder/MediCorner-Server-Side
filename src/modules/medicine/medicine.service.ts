@@ -192,27 +192,40 @@ const updateMedicine = async (
 };
 
 
-const deleteMedicine = async (medicineId: string, userId: string) => {
+const deleteMedicine = async (medicineId: string, sellerId: string) => { 
 
-    // const isOwner = await prisma.medicine.findUnique({
-    //     where: {
-    //         id: medicineId,
-    //         userId,
-    //     }
-    // })
+    //  check medicine exists
+    const medicine = await prisma.medicine.findUnique({
+        where: { id: medicineId },
+    });
 
-    // if (!isOwner) {
-    //     return {
-    //         success: false,
-    //         message: "Medicine not found"
-    //     }
-    // }
+    if (!medicine) {
+        throw new AppError(404, "Medicine not found");
+    }
 
-    const medicine = await prisma.medicine.findUnique({ where: { id: medicineId } });
-    if (!medicine) throw new AppError(404, "Medicine not found");
+    // check ownership
+    const sellerMedicine = await prisma.sellerMedicine.findFirst({
+        where: {
+            medicineId,
+            sellerId,
+        },
+    });
 
-    return prisma.medicine.delete({ where: { id: medicineId } });
+    if (!sellerMedicine) {
+        throw new AppError(
+            403,
+            "You are not allowed to delete this medicine"
+        );
+    }
+
+    // delete order matters (FK safe)
+    await prisma.medicine.delete({
+        where: { id: medicineId },
+    });
+
+    return true;
 };
+
 
 export const medicineServices = {
     addMedicineWithInventory,

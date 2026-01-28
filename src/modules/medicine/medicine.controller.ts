@@ -105,13 +105,22 @@ const updateMedicine = async (
     }
 };
 
-
-// DELETE
-const deleteMedicine = async (req: Request, res: Response, next: NextFunction) => {
+// Delete
+const deleteMedicine = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
     try {
-        const { id } = req.params;
+        if (!req.user) {
+            throw new AppError(401, "Unauthorized");
+        }
 
-        await medicineServices.deleteMedicine(id as string, req.user?.id as string);
+        const { id } = req.params;
+        const sellerId = req.user.id;
+
+        await medicineServices.deleteMedicine(id as string, sellerId);
+
         res.status(200).json({
             success: true,
             message: "Medicine deleted successfully",
@@ -120,6 +129,7 @@ const deleteMedicine = async (req: Request, res: Response, next: NextFunction) =
         next(error);
     }
 };
+
 
 export const medicineController = {
     createMedicine,
