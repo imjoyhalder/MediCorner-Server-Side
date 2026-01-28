@@ -1,0 +1,227 @@
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  CUSTOMER
+  SELLER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  BAN
+}
+
+enum OrderStatus {
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model User {
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+
+  role   UserRole?   @default(CUSTOMER)
+  phone  String?
+  status UserStatus? @default(ACTIVE)
+
+  // business relations
+  cart        Cart?
+  orders      Order[]
+  reviews     Review[]
+  sellerItems SellerMedicine[]
+  adminLogs   AdminLog[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model MedicineCategory {
+  id   String @id @default(uuid())
+  name String
+  slug String @unique
+
+  medicines Medicine[]
+}
+
+model Medicine {
+  id           String  @id @default(uuid())
+  name         String
+  brandName    String
+  genericName  String?
+  manufacturer String?
+  description  String?
+  isOtc        Boolean @default(true)
+  thumbnail    String?
+
+  categoryId String
+  category   MedicineCategory @relation(fields: [categoryId], references: [id])
+
+  sellers SellerMedicine[]
+  reviews Review[]
+}
+
+model SellerMedicine {
+  id            String    @id @default(uuid())
+  price         Int
+  stockQuantity Int       @default(0)
+  expiryDate    DateTime?
+  batchNumber   String
+  isAvailable   Boolean   @default(true)
+
+  sellerId String
+  seller   User   @relation(fields: [sellerId], references: [id])
+
+  medicineId String
+  medicine   Medicine @relation(fields: [medicineId], references: [id])
+
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+}
+
+/// CART
+
+model Cart {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items CartItem[]
+}
+
+model CartItem {
+  id       String @id @default(uuid())
+  quantity Int
+
+  cartId String
+  cart   Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  sellerMedicineId String
+  sellerMedicine   SellerMedicine @relation(fields: [sellerMedicineId], references: [id])
+}
+
+/// ORDER
+
+model Order {
+  id     String      @id @default(uuid())
+  total  Float
+  status OrderStatus @default(PROCESSING)
+
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  items OrderItem[]
+
+  @@map("order")
+}
+
+model OrderItem {
+  id       String @id @default(uuid())
+  price    Int
+  quantity Int
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  sellerMedicineId String
+  sellerMedicine   SellerMedicine @relation(fields: [sellerMedicineId], references: [id])
+}
+
+/// REVIEW
+
+model Review {
+  id      String @id @default(uuid())
+  rating  Int?
+  comment String
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  medicineId String
+  medicine   Medicine @relation(fields: [medicineId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+/// ADMIN LOG
+
+model AdminLog {
+  id       String @id @default(uuid())
+  action   String
+  entity   String
+  entityId String
+
+  adminId String
+  admin   User   @relation(fields: [adminId], references: [id])
+
+  createdAt DateTime @default(now())
+}
