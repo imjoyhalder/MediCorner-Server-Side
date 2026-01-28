@@ -1,6 +1,7 @@
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../errors/AppError";
 import { parseExpiryDate } from "../../helper/dateFormater";
+import { Prisma } from "../../../generated/prisma/client";
 
 
 
@@ -29,6 +30,19 @@ interface UpdateMedicinePayload {
     price?: number;
     stockQuantity?: number;
     batchNumber?: string;
+}
+
+interface GetAllMedicinePayload {
+    search?: string;
+    categoryId?: string;
+    manufacturer?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    page: number;
+    limit: number;
+    skip: number;
+    sortBy: string;
+    sortOrder: "asc" | "desc";
 }
 
 
@@ -105,16 +119,112 @@ const addMedicineWithInventory = async (
 };
 
 
-const getAllMedicines = async () => {
-    return prisma.medicine.findMany({
+const getAllMedicines = async (payload: GetAllMedicinePayload) => {
+    const {
+        search,
+        categoryId,
+        manufacturer,
+        minPrice,
+        maxPrice,
+        page,
+        limit,
+        skip,
+        sortBy,
+        sortOrder,
+    } = payload;
+
+    const andConditions: Prisma.MedicineWhereInput[] = [];
+
+    //  search (name / brand / generic)
+    if (search) {
+        andConditions.push({
+            OR: [
+                {
+                    name: {
+                        contains: search,
+                        mode: "insensitive",
+                    },
+                },
+                {
+                    brandName: {
+                        contains: search,
+                        mode: "insensitive",
+                    },
+                },
+                {
+                    genericName: {
+                        contains: search,
+                        mode: "insensitive",
+                    },
+                },
+            ],
+        });
+    }
+
+    // category filter
+    if (categoryId) {
+        andConditions.push({
+            categoryId,
+        });
+    }
+
+    //  manufacturer filter
+    if (manufacturer) {
+        andConditions.push({
+            manufacturer: {
+                contains: manufacturer,
+                mode: "insensitive",
+            },
+        });
+    }
+
+    //  price filter (medicineSeller relation)
+    if (minPrice !== undefined || maxPrice !== undefined) {
+        andConditions.push({
+            sellers: {
+                some: {
+                    price: {
+                        gte: minPrice,
+                        lte: maxPrice,
+                    },
+                },
+            },
+        });
+    }
+
+    const result = await prisma.medicine.findMany({
+        take: limit,
+        skip,
+        where: {
+            AND: andConditions,
+        },
+        orderBy: {
+            [sortBy]: sortOrder,
+        },
         include: {
             category: true,
             reviews: true,
             sellers: true,
         },
-        orderBy: { name: "asc" },
     });
+
+    const total = await prisma.medicine.count({
+        where: {
+            AND: andConditions,
+        },
+    });
+
+    return {
+        data: result,
+        pagination: {
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        },
+    };
 };
+
 
 const getSingleMedicine = async (id: string) => {
     const medicine = await prisma.medicine.findUnique({
@@ -192,7 +302,7 @@ const updateMedicine = async (
 };
 
 
-const deleteMedicine = async (medicineId: string, sellerId: string) => { 
+const deleteMedicine = async (medicineId: string, sellerId: string) => {
 
     //  check medicine exists
     const medicine = await prisma.medicine.findUnique({

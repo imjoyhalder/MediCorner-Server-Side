@@ -51,13 +51,45 @@ const createMedicine = async (req: Request, res: Response, next: NextFunction) =
     }
 };
 
-// GET ALL
-const getAllMedicines = async (req: Request, res: Response, next: NextFunction) => {
+// GET ALL medicine
+const getAllMedicines = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
     try {
-        const result = await medicineServices.getAllMedicines();
+        const {
+            search,
+            categoryId,
+            manufacturer,
+            minPrice,
+            maxPrice,
+            page = 1,
+            limit = 10,
+            sortBy = "name",
+            sortOrder = "asc",
+        } = req.query;
+
+        const pageNumber = Number(page);
+        const limitNumber = Number(limit);
+
+        const result = await medicineServices.getAllMedicines({
+            search: search as string,
+            categoryId: categoryId as string,
+            manufacturer: manufacturer as string,
+            minPrice: minPrice ? Number(minPrice) : undefined,
+            maxPrice: maxPrice ? Number(maxPrice) : undefined,
+            page: pageNumber,
+            limit: limitNumber,
+            skip: (pageNumber - 1) * limitNumber,
+            sortBy: sortBy as string,
+            sortOrder: sortOrder as "asc" | "desc",
+        });
+
         res.status(200).json({
             success: true,
-            data: result,
+            data: result.data,
+            pagination: result.pagination,
         });
     } catch (error) {
         next(error);
