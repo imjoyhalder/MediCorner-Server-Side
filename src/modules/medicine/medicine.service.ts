@@ -1,16 +1,23 @@
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../errors/AppError";
+import { parseExpiryDate } from "../../helper/dateFormater";
 
-interface CreateMedicinePayload {
+
+
+interface AddMedicineWithInventoryPayload {
     name: string;
     brandName: string;
     genericName?: string;
     manufacturer?: string;
     description?: string;
-    isOtc?: boolean;
-    thumbnail?: string;
     categoryId: string;
+
+    price: number;
+    stockQuantity?: number;
+    batchNumber: string;
+    expiryDate?: Date;
 }
+
 
 interface UpdateMedicinePayload {
     name?: string;
@@ -23,20 +30,74 @@ interface UpdateMedicinePayload {
     categoryId?: string;
 }
 
-const createMedicine = async (payload: CreateMedicinePayload) => {
-    // check category exists
-    const category = await prisma.medicineCategory.findUnique({
-        where: { id: payload.categoryId },
-    });
-    if (!category) throw new AppError(400, "Invalid categoryId");
 
-    return prisma.medicine.create({
-        data: {
-            ...payload,
-            isOtc: payload.isOtc ?? true,
-        },
+const addMedicineWithInventory = async (
+    sellerId: string,
+    payload: AddMedicineWithInventoryPayload
+) => {
+    return prisma.$transaction(async (tx) => {
+        console.log(payload);
+        const category = await tx.medicineCategory.findUnique({
+            where: { id: payload.categoryId },
+        });
+        if (!category) throw new AppError(400, "Invalid categoryId");
+
+        // 2. check medicine exists
+        let medicine = await tx.medicine.findFirst({
+            where: {
+                name: payload.name,
+                brandName: payload.brandName,
+            },
+        });
+
+        // 3. if medicine not exists 
+        if (!medicine) {
+            medicine = await tx.medicine.create({
+                data: {
+                    name: payload.name,
+                    brandName: payload.brandName,
+                    genericName: payload.genericName,
+                    manufacturer: payload.manufacturer,
+                    description: payload.description,
+                    categoryId: payload.categoryId,
+                    isOtc: true,
+                },
+            });
+        }
+
+        // 4. prevent same seller duplicate
+        const alreadyAdded = await tx.sellerMedicine.findFirst({
+            where: {
+                sellerId,
+                medicineId: medicine.id,
+            },
+        });
+
+        if (alreadyAdded) {
+            throw new AppError(409, "Medicine already added by this seller");
+        }
+
+        // 5. create SellerMedicine (inventory)
+        const sellerMedicine = await tx.sellerMedicine.create({
+            data: {
+                sellerId,
+                medicineId: medicine.id,
+                price: payload.price,
+                stockQuantity: payload.stockQuantity ?? 0,
+                batchNumber: payload.batchNumber,
+                expiryDate: payload.expiryDate, // Date | undefined
+                isAvailable: true,
+            },
+        });
+
+
+        return {
+            medicine,
+            inventory: sellerMedicine,
+        };
     });
 };
+
 
 const getAllMedicines = async () => {
     return prisma.medicine.findMany({
@@ -89,7 +150,7 @@ const deleteMedicine = async (id: string) => {
 };
 
 export const medicineServices = {
-    createMedicine,
+    addMedicineWithInventory,
     getAllMedicines,
     getSingleMedicine,
     updateMedicine,

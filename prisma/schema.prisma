@@ -137,7 +137,7 @@ model SellerMedicine {
   seller   User   @relation(fields: [sellerId], references: [id])
 
   medicineId String
-  medicine   Medicine @relation(fields: [medicineId], references: [id])
+  medicine   Medicine @relation(fields: [medicineId], references: [id], onDelete: Cascade)
 
   cartItems  CartItem[]
   orderItems OrderItem[]

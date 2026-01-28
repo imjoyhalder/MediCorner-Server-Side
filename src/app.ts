@@ -9,6 +9,7 @@ import { reviewRouter } from "./modules/review/review.router";
 import { userRouter } from "./modules/user/user.router";
 import errorHandler from "./middlewares/errorHandler";
 import { medicineCategoryRoutes } from "./modules/medicineCategory/medicineCategory.route";
+import { notFound } from "./middlewares/notFound";
 
 const app: Application = express()
 
@@ -36,9 +37,9 @@ app.get('/', (req: Request, res: Response) => {
     })
 })
 
-// app.use(notFound)
+app.use(notFound)
 
-app.use(errorHandler)
+// app.use(errorHandler)
 
 
 
