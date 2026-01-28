@@ -1,3 +1,4 @@
+import { UserStatus } from "../../generated/prisma/enums"
 import { auth as betterAuth } from "../lib/auth"
 import { NextFunction, Request, Response } from "express"
 
@@ -9,7 +10,8 @@ declare global {
                 email: string,
                 name: string,
                 role: string,
-                emailVerified: boolean
+                emailVerified: boolean, 
+                status: UserStatus
             }
         }
     }
@@ -47,10 +49,11 @@ const auth = (...roles: UserRole[]) => {
                 email: session.user.email,
                 name: session.user.name,
                 role: session.user.role as string,
-                emailVerified: session.user.emailVerified
+                emailVerified: session.user.emailVerified,
+                status: session.user?.status as UserStatus
             }
 
-            if (roles.length && !roles.includes(req.user.role as UserRole)) {
+            if (roles.length && !roles.includes(req.user.role as UserRole) && req.user.status===UserStatus.BAN) {
                 return res.status(403).json({
                     success: false,
                     message: "Forbidden! You don't have permission to access this resource"

@@ -21,11 +21,11 @@ import { prisma } from "../../lib/prisma";
 const createMedicine = async (payload: {
     name: string
     brandName: string
-    genericName: string
-    manufacturer: string
-    description: string
-    isOtc: boolean
-    thumbnail: string
+    genericName?: string
+    manufacturer?: string
+    description?: string
+    isOtc?: boolean
+    thumbnail?: string
     categoryId: string
 }) => {
     const res = await prisma.medicine.create({

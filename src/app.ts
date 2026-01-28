@@ -7,6 +7,7 @@ import { toNodeHandler } from "better-auth/node";
 import { medicineRouter } from "./modules/medicine/medicine.router";
 import { reviewRouter } from "./modules/review/review.router";
 import { userRouter } from "./modules/user/user.router";
+import errorHandler from "./middlewares/errorHandler";
 
 const app: Application = express()
 
@@ -36,7 +37,7 @@ app.get('/', (req: Request, res: Response) => {
 
 // app.use(notFound)
 
-// app.use(errorHandler)
+app.use(errorHandler)
 
 
 
