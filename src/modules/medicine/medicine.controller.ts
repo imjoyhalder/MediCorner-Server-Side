@@ -31,7 +31,7 @@ const createMedicine = async (req: Request, res: Response, next: NextFunction) =
             price,
             batchNumber,
         } = req.body;
-        
+
         if (!name || !brandName || !categoryId || !price || !batchNumber) {
             throw new AppError(400, "Required fields are missing");
         }
@@ -79,11 +79,22 @@ const getSingleMedicine = async (req: Request, res: Response, next: NextFunction
 };
 
 // UPDATE
-const updateMedicine = async (req: Request, res: Response, next: NextFunction) => {
+
+const updateMedicine = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
     try {
         const { id } = req.params;
-        const payload = req.body;
-        const result = await medicineServices.updateMedicine(id as string, payload);
+        const sellerId = req.user!.id;
+
+        const result = await medicineServices.updateMedicine(
+            id! as string,
+            sellerId,
+            req.body
+        );
+
         res.status(200).json({
             success: true,
             message: "Medicine updated successfully",
@@ -94,11 +105,13 @@ const updateMedicine = async (req: Request, res: Response, next: NextFunction) =
     }
 };
 
+
 // DELETE
 const deleteMedicine = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
-        await medicineServices.deleteMedicine(id as string);
+
+        await medicineServices.deleteMedicine(id as string, req.user?.id as string);
         res.status(200).json({
             success: true,
             message: "Medicine deleted successfully",

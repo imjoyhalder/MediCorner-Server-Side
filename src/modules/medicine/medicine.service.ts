@@ -25,10 +25,12 @@ interface UpdateMedicinePayload {
     genericName?: string;
     manufacturer?: string;
     description?: string;
-    isOtc?: boolean;
-    thumbnail?: string;
-    categoryId?: string;
+
+    price?: number;
+    stockQuantity?: number;
+    batchNumber?: string;
 }
+
 
 
 const addMedicineWithInventory = async (
@@ -75,6 +77,10 @@ const addMedicineWithInventory = async (
 
         if (alreadyAdded) {
             throw new AppError(409, "Medicine already added by this seller");
+            // return {
+            //     success: false, 
+            //     message: "Medicine already added by this seller"
+            // }
         }
 
         // 5. create SellerMedicine (inventory)
@@ -124,29 +130,88 @@ const getSingleMedicine = async (id: string) => {
     return medicine;
 };
 
-const updateMedicine = async (id: string, payload: UpdateMedicinePayload) => {
-    const medicine = await prisma.medicine.findUnique({ where: { id } });
-    if (!medicine) throw new AppError(404, "Medicine not found");
+const updateMedicine = async (
+    medicineId: string,
+    sellerId: string,
+    payload: UpdateMedicinePayload
+) => {
+    // check medicine exists
+    const medicine = await prisma.medicine.findUnique({
+        where: { id: medicineId },
+    });
 
-    // if categoryId is updated, check it
-    if (payload.categoryId) {
-        const category = await prisma.medicineCategory.findUnique({
-            where: { id: payload.categoryId },
-        });
-        if (!category) throw new AppError(400, "Invalid categoryId");
+    if (!medicine) {
+        throw new AppError(404, "Medicine not found");
     }
 
-    return prisma.medicine.update({
-        where: { id },
-        data: payload,
+    // check seller owns this medicine
+    const sellerMedicine = await prisma.sellerMedicine.findFirst({
+        where: {
+            medicineId,
+            sellerId,
+        },
+    });
+
+    if (!sellerMedicine) {
+        throw new AppError(403, "You are not allowed to update this medicine");
+    }
+
+    // update medicine table (basic info)
+    const medicineUpdateData = {
+        name: payload.name,
+        brandName: payload.brandName,
+        genericName: payload.genericName,
+        manufacturer: payload.manufacturer,
+        description: payload.description,
+    };
+
+    await prisma.medicine.update({
+        where: { id: medicineId },
+        data: medicineUpdateData,
+    });
+
+    // update medicineSeller table (inventory info)
+    const sellerUpdateData = {
+        price: payload.price,
+        stockQuantity: payload.stockQuantity,
+        batchNumber: payload.batchNumber,
+    };
+
+    await prisma.sellerMedicine.update({
+        where: { id: sellerMedicine.id },
+        data: sellerUpdateData,
+    });
+
+    return await prisma.medicine.findUnique({
+        where: { id: medicineId },
+        include: {
+            sellers: true,
+            category: true,
+        },
     });
 };
 
-const deleteMedicine = async (id: string) => {
-    const medicine = await prisma.medicine.findUnique({ where: { id } });
+
+const deleteMedicine = async (medicineId: string, userId: string) => {
+
+    // const isOwner = await prisma.medicine.findUnique({
+    //     where: {
+    //         id: medicineId,
+    //         userId,
+    //     }
+    // })
+
+    // if (!isOwner) {
+    //     return {
+    //         success: false,
+    //         message: "Medicine not found"
+    //     }
+    // }
+
+    const medicine = await prisma.medicine.findUnique({ where: { id: medicineId } });
     if (!medicine) throw new AppError(404, "Medicine not found");
 
-    return prisma.medicine.delete({ where: { id } });
+    return prisma.medicine.delete({ where: { id: medicineId } });
 };
 
 export const medicineServices = {
