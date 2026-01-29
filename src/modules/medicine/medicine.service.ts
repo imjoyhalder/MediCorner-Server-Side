@@ -148,7 +148,7 @@ const getAllMedicines = async (payload: any) => {
         include: {
             category: true,
             reviews: true,
-            sellers: true,
+            // sellers: true,
         },
     });
 
