@@ -15,3 +15,10 @@ export interface ServiceResponse<T = any> {
     message: string;
     data?: T;
 }
+export interface UserServiceResponse<T = any> {
+    success: boolean;
+    statusCode: number;
+    message: string;
+    data?: T;
+}
+

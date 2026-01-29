@@ -12,6 +12,7 @@ import { notFound } from "./middlewares/notFound";
 import { orderRouter } from "./modules/order/placeOrder.route";
 import { CartRouter } from "./modules/cart/cart.route";
 import { sellerRouter } from "./modules/seller/seller.route";
+import { userRouter } from "./modules/user/user.route";
 
 const app: Application = express()
 
@@ -33,8 +34,10 @@ app.use('/api/v1/categories', medicineCategoryRoutes)
 app.use('/api/v1/order', orderRouter)
 app.use('/api/v1/cart', CartRouter)
 
-app.use('/api/v1/seller', sellerRouter)
 app.use('/api/v1/admin', adminRouter)
+app.use('/api/v1/seller', sellerRouter)
+app.use('/api/v1/user', userRouter)
+
 
 app.get('/', (req: Request, res: Response) => {
     res.status(200).send({
