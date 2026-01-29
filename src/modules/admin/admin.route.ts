@@ -7,7 +7,8 @@ const router = express.Router()
 
 router.get('/',auth(UserRole.ADMIN), userController.getUsers)
 router.patch('/:userId',auth(UserRole.ADMIN),userController.banUser)
+router.patch('/:userId',auth(UserRole.ADMIN),userController.getAdminChartData)
 
 
-export const userRouter: Router = router
+export const adminRouter: Router = router
 

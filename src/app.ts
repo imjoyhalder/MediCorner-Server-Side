@@ -5,7 +5,7 @@ import cors from "cors"
 import { toNodeHandler } from "better-auth/node";
 import { medicineRouter } from "./modules/medicine/medicine.route";
 import { reviewRouter } from "./modules/review/review.route";
-import { userRouter } from "./modules/admin/admin.route";
+import { adminRouter } from "./modules/admin/admin.route";
 import errorHandler from "./middlewares/errorHandler";
 import { medicineCategoryRoutes } from "./modules/medicineCategory/medicineCategory.route";
 import { notFound } from "./middlewares/notFound";
@@ -28,12 +28,13 @@ app.use(express.json())
 
 app.use('/api/v1/medicine', medicineRouter)
 app.use('/api/v1/review', reviewRouter)
-app.use('/api/v1/users', userRouter)
+
 app.use('/api/v1/categories', medicineCategoryRoutes)
 app.use('/api/v1/order', orderRouter)
 app.use('/api/v1/cart', CartRouter)
 
 app.use('/api/v1/seller', sellerRouter)
+app.use('/api/v1/admin', adminRouter)
 
 app.get('/', (req: Request, res: Response) => {
     res.status(200).send({
