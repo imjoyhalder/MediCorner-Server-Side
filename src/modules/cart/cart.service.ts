@@ -64,3 +64,49 @@ export const getCart = async (userId: string): Promise<ServiceResponse> => {
 
     return { success: true, statusCode: 200, message: "Cart fetched", data: cart };
 };
+
+export const deleteCartItem = async (
+    userId: string,
+    cartItemId: string
+): Promise<ServiceResponse> => {
+
+    //  User cart check
+    const cart = await prisma.cart.findUnique({
+        where: { userId },
+    });
+
+    if (!cart) {
+        return {
+            success: false,
+            statusCode: 404,
+            message: "Cart not found",
+        };
+    }
+
+    //  Item belongs to this cart কিনা verify
+    const cartItem = await prisma.cartItem.findFirst({
+        where: {
+            id: cartItemId,
+            cartId: cart.id,
+        },
+    });
+
+    if (!cartItem) {
+        return {
+            success: false,
+            statusCode: 404,
+            message: "Cart item not found",
+        };
+    }
+
+    //  Delete item
+    await prisma.cartItem.delete({
+        where: { id: cartItemId },
+    });
+
+    return {
+        success: true,
+        statusCode: 200,
+        message: "Item removed from cart",
+    };
+};
