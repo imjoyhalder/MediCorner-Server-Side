@@ -20,6 +20,7 @@ enum UserStatus {
 
 enum OrderStatus {
   PROCESSING
+  // CONFIRMED
   SHIPPED
   DELIVERED
   CANCELLED
@@ -140,6 +141,8 @@ model SellerMedicine {
 
   cartItems  CartItem[]
   orderItems OrderItem[]
+
+  @@unique([sellerId, medicineId])
 }
 
 /// CART
@@ -164,18 +167,22 @@ model CartItem {
 
   sellerMedicineId String
   sellerMedicine   SellerMedicine @relation(fields: [sellerMedicineId], references: [id])
+
+  @@unique([cartId, sellerMedicineId])
 }
+
 
 /// ORDER
 
 model Order {
   id              String      @id @default(uuid())
-  total           Float
+  total           Int
   status          OrderStatus @default(PROCESSING)
   shippingAddress String
-  paymentMethod   String   @default("COD")
-  
-  createdAt       DateTime    @default(now())
+  paymentMethod   String      @default("COD")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -186,9 +193,10 @@ model Order {
 }
 
 model OrderItem {
-  id       String @id @default(uuid())
+  id       String      @id @default(uuid())
   price    Int
   quantity Int
+  status   OrderStatus @default(PROCESSING)
 
   orderId String
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)

@@ -59,7 +59,7 @@ const getAllCategories = async () => {
     };
 };
 
-// GET SINGLE Category
+
 const getSingleCategory = async (id: string) => {
     if (!id) {
         return {
@@ -94,7 +94,7 @@ const getSingleCategory = async (id: string) => {
     };
 };
 
-// Delete
+
 const deleteSingleCategory = async (id: string) => {
     if (!id) {
         return {
