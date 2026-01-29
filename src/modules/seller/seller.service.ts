@@ -100,6 +100,47 @@ const getSellerMedicines = async (sellerId: string, payload: any) => {
     };
 };
 
+const getSellerStats = async (sellerId: string) => {
+    // Total medicines posted
+    const totalMedicines = await prisma.sellerMedicine.count({ where: { sellerId } });
+
+    //  Orders for seller's medicines
+    const orderItems = await prisma.orderItem.findMany({
+        where: { sellerMedicine: { sellerId } },
+        include: { sellerMedicine: true },
+    });
+
+    const totalOrders = orderItems.length;
+
+    //  Revenue (sum of price * quantity)
+    const totalRevenue = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+    //  Reviews for seller's medicines
+    const medicines = await prisma.sellerMedicine.findMany({
+        where: { sellerId },
+        include: { medicine: { include: { reviews: true } } },
+    });
+
+    const totalReviews = medicines.reduce((sum, sm) => sum + sm.medicine.reviews.length, 0);
+
+    const allRatings = medicines.flatMap((sm) => sm.medicine.reviews.map((r) => r.rating));
+    const averageRating = allRatings.length > 0 ? allRatings.reduce((a, b) => a! + b!, 0)! / allRatings.length : 0;
+
+    return {
+        success: true,
+        statusCode: 200,
+        message: "Seller statistics fetched successfully",
+        data: {
+            totalMedicines,
+            totalOrders,
+            totalRevenue,
+            totalReviews,
+            averageRating: Number(averageRating.toFixed(2)),
+        },
+    };
+};
+
 export const sellerService = {
-    getSellerMedicines
+    getSellerMedicines, 
+    getSellerStats
 }

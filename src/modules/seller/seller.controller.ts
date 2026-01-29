@@ -3,7 +3,7 @@ import { sellerService } from "./seller.service";
 
 
 
-const getSellerMedicinesController = async (
+const getSellerMedicines = async (
     req: Request,
     res: Response,
     next: NextFunction
@@ -23,6 +23,19 @@ const getSellerMedicinesController = async (
     }
 };
 
+const getSellerStats = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const sellerId = req.user?.id;
+        if (!sellerId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+        const result = await sellerService.getSellerStats(sellerId);
+        res.status(result.statusCode).json(result);
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const sellerController = {
-    getSellerMedicinesController
+    getSellerMedicines,
+    getSellerStats
 }
