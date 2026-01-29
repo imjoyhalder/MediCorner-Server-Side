@@ -25,12 +25,12 @@ app.all("/api/auth/*splat", toNodeHandler(auth));
 
 app.use(express.json())
 
-app.use('/medicine', medicineRouter)
-app.use('/review', reviewRouter)
-app.use('/users', userRouter)
-app.use('/categories', medicineCategoryRoutes)
+app.use('/api/v1/medicine', medicineRouter)
+app.use('/api/v1/review', reviewRouter)
+app.use('/api/v1/users', userRouter)
+app.use('/api/v1/categories', medicineCategoryRoutes)
 app.use('/api/v1/order', orderRouter)
-app.use('/cart', CartRouter)
+app.use('/api/v1/cart', CartRouter)
 
 app.get('/', (req: Request, res: Response) => {
     res.status(200).send({

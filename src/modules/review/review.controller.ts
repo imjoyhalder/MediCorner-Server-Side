@@ -1,19 +1,30 @@
 import { NextFunction, Request, Response } from "express";
 import { reviewService } from "./review.service";
 
-const createReview = async (req: Request, res: Response, next: NextFunction) => {
+const createReview = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
     try {
+        const userId = req.user?.id;  // Ensure this is string id from auth
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized",
+            });
+        }
 
-        const userId = req?.user
-        req.body.userId = userId
+        // inject userId
+        req.body.userId = userId;
 
-        const result = await reviewService.createReview(req.body)
-        res.status(200).json({ result })
+        const result = await reviewService.createReview(req.body);
+
+        res.status(result.statusCode).json(result);
+    } catch (error) {
+        next(error);
     }
-    catch (error) {
-        next(error)
-    }
-}
+};
 
 export const reviewController = {
     createReview

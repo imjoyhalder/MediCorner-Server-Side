@@ -3,6 +3,28 @@
 import { prisma } from "../../lib/prisma";
 import { PlaceOrderPayload, ServiceResponse } from "../../types/order.types";
 
+interface MedicineSummary {
+    name: string;
+    price: number;
+    quantity: number;
+    medicineId: string; 
+}
+
+interface OrderSummary {
+    orderId: string;
+    status: string;
+    total: number;
+    medicines: MedicineSummary[];
+}
+
+interface SellerSummaryItem {
+    sellerId: string;
+    sellerName: string;
+    totalOrders: number;
+    totalProductsSold: number;
+    totalRevenue: number;
+}
+
 type OrderItemData = {
     sellerMedicineId: string;
     price: number;
@@ -139,8 +161,7 @@ const getMyOrders = async (userId: string): Promise<ServiceResponse> => {
                     include: {
                         sellerMedicine: {
                             include: {
-                                medicine: true,
-                                seller: true,
+                                medicine: true, // for medicine name
                             },
                         },
                     },
@@ -148,11 +169,24 @@ const getMyOrders = async (userId: string): Promise<ServiceResponse> => {
             },
         });
 
+        // Map to summary
+        const summary: OrderSummary[] = orders.map((order) => ({
+            orderId: order.id,
+            status: order.status,
+            total: order.total,
+            medicines: order.items.map((item) => ({
+                name: item.sellerMedicine.medicine.name,
+                medicineId: item.sellerMedicine.medicine.id,
+                price: item.price,
+                quantity: item.quantity,
+            })),
+        }));
+
         return {
             success: true,
             statusCode: 200,
-            message: "Orders fetched",
-            data: orders,
+            message: "Orders summary fetched",
+            data: summary,
         };
     } catch (err: any) {
         return {
@@ -332,18 +366,58 @@ const updateOrderStatus = async (
 };
 
 //  Admin fetch all orders
-const getAllOrders = async (): Promise<ServiceResponse> => {
+
+export const getAllOrders = async (): Promise<ServiceResponse> => {
     try {
-        const orders = await prisma.order.findMany({
-            orderBy: { createdAt: "desc" },
+        //  Fetch all order items with seller + price + quantity
+        const orderItems = await prisma.orderItem.findMany({
             include: {
-                items: { include: { sellerMedicine: { include: { medicine: true, seller: true } } } },
-                user: true,
+                sellerMedicine: {
+                    include: {
+                        seller: true,
+                    },
+                },
             },
         });
-        return { success: true, statusCode: 200, message: "All orders fetched", data: orders };
+
+        // Aggregate by seller
+        const summaryMap: Record<string, SellerSummaryItem> = {};
+
+        for (const item of orderItems) {
+            const sellerId = item.sellerMedicine.seller.id;
+            const sellerName = item.sellerMedicine.seller.name;
+
+            if (!summaryMap[sellerId]) {
+                summaryMap[sellerId] = {
+                    sellerId,
+                    sellerName,
+                    totalOrders: 0,
+                    totalProductsSold: 0,
+                    totalRevenue: 0,
+                };
+            }
+
+            // Count this order only once per order?
+            // For simplicity, count order per item
+            summaryMap[sellerId].totalOrders += 1;
+            summaryMap[sellerId].totalProductsSold += item.quantity;
+            summaryMap[sellerId].totalRevenue += item.price * item.quantity;
+        }
+
+        const summaryArray = Object.values(summaryMap);
+
+        return {
+            success: true,
+            statusCode: 200,
+            message: "Seller summary fetched",
+            data: summaryArray,
+        };
     } catch (err: any) {
-        return { success: false, statusCode: 500, message: err.message || "Failed to fetch all orders" };
+        return {
+            success: false,
+            statusCode: 500,
+            message: err.message || "Failed to fetch seller summary",
+        };
     }
 }
 

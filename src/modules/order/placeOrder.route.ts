@@ -17,6 +17,5 @@ router.patch('/seller/:id/status', auth(UserRole.SELLER), OrderController.update
 // Admin
 router.get('/all', auth(UserRole.ADMIN), OrderController.getAllOrders);
 
-
 export const orderRouter: Router = router
 
