@@ -133,6 +133,7 @@ model SellerMedicine {
   batchNumber   String
   isAvailable   Boolean   @default(true)
 
+
   sellerId String
   seller   User   @relation(fields: [sellerId], references: [id])
 

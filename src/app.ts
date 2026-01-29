@@ -5,12 +5,13 @@ import cors from "cors"
 import { toNodeHandler } from "better-auth/node";
 import { medicineRouter } from "./modules/medicine/medicine.route";
 import { reviewRouter } from "./modules/review/review.route";
-import {  userRouter } from "./modules/user/user.route";
+import { userRouter } from "./modules/admin/admin.route";
 import errorHandler from "./middlewares/errorHandler";
 import { medicineCategoryRoutes } from "./modules/medicineCategory/medicineCategory.route";
 import { notFound } from "./middlewares/notFound";
 import { orderRouter } from "./modules/order/placeOrder.route";
 import { CartRouter } from "./modules/cart/cart.route";
+import { sellerRouter } from "./modules/seller/seller.route";
 
 const app: Application = express()
 
@@ -31,6 +32,8 @@ app.use('/api/v1/users', userRouter)
 app.use('/api/v1/categories', medicineCategoryRoutes)
 app.use('/api/v1/order', orderRouter)
 app.use('/api/v1/cart', CartRouter)
+
+app.use('/api/v1/seller', sellerRouter)
 
 app.get('/', (req: Request, res: Response) => {
     res.status(200).send({

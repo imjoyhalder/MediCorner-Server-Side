@@ -2,7 +2,6 @@
 import { prisma } from "../../lib/prisma";
 import { Prisma } from "../../../generated/prisma/client";
 
-
 const addMedicineWithInventory = async (
     sellerId: string,
     payload: any
@@ -93,7 +92,87 @@ const addMedicineWithInventory = async (
     });
 };
 
+// this is for all users 
 const getAllMedicines = async (payload: any) => {
+    const {
+        search,
+        categoryId,
+        manufacturer,
+        minPrice,
+        maxPrice,
+        page,
+        limit,
+        skip,
+        sortBy,
+        sortOrder,
+    } = payload;
+
+    const andConditions: Prisma.MedicineWhereInput[] = [];
+
+    if (search) {
+        andConditions.push({
+            OR: [
+                { name: { contains: search, mode: "insensitive" } },
+                { brandName: { contains: search, mode: "insensitive" } },
+                { genericName: { contains: search, mode: "insensitive" } },
+            ],
+        });
+    }
+
+    if (categoryId) andConditions.push({ categoryId });
+
+    if (manufacturer) {
+        andConditions.push({
+            manufacturer: { contains: manufacturer, mode: "insensitive" },
+        });
+    }
+
+    if (minPrice !== undefined || maxPrice !== undefined) {
+        andConditions.push({
+            sellers: {
+                some: {
+                    price: {
+                        gte: minPrice,
+                        lte: maxPrice,
+                    },
+                },
+            },
+        });
+    }
+
+    const data = await prisma.medicine.findMany({
+        take: limit,
+        skip,
+        where: { AND: andConditions },
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+            category: true,
+            reviews: true,
+            sellers: true,
+        },
+    });
+
+    const total = await prisma.medicine.count({
+        where: { AND: andConditions },
+    });
+
+    return {
+        success: true,
+        statusCode: 200,
+        message: "Medicines fetched successfully",
+        data,
+        pagination: {
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        },
+    };
+};
+
+
+// seller only can access his posted medicine 
+const getAllMedicinesBySeller = async (payload: any) => {
     const {
         search,
         categoryId,
@@ -205,7 +284,6 @@ const getSingleMedicine = async (id: string) => {
         data: medicine,
     };
 };
-
 
 const updateMedicine = async (
     medicineId: string,
