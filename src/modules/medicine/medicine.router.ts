@@ -4,8 +4,8 @@ import auth, { UserRole } from "../../middlewares/auth";
 
 const router = express.Router();
 
-router.get("/", medicineController.getAllMedicines);
-router.get("/:id", medicineController.getSingleMedicine);
+router.get("/", auth(UserRole.SELLER, UserRole.CUSTOMER, UserRole.ADMIN), medicineController.getAllMedicines);
+router.get("/:id",auth(UserRole.SELLER, UserRole.CUSTOMER, UserRole.ADMIN), medicineController.getSingleMedicine);
 router.post("/", auth(UserRole.SELLER), medicineController.createMedicine);
 router.patch("/:id", auth(UserRole.SELLER), medicineController.updateMedicine);
 router.delete("/:id",  auth(UserRole.SELLER), medicineController.deleteMedicine);
