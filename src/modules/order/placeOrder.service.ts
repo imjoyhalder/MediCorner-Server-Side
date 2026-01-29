@@ -17,7 +17,6 @@ interface CreateOrderPayload {
     }[];
 }
 
-
 const placeOrder = async (userId: string, payload: PlaceOrderPayload): Promise<ServiceResponse> => {
     try {
         const { shippingAddress, items } = payload;
@@ -169,7 +168,6 @@ const getAllOrders = async (): Promise<ServiceResponse> => {
         return { success: false, statusCode: 500, message: err.message || "Failed to fetch all orders" };
     }
 }
-
 
 export const OrderServices = {
     placeOrder,

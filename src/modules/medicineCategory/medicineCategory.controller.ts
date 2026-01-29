@@ -9,18 +9,12 @@ const createCategory = async (
     next: NextFunction
 ) => {
     try {
-        const { name, slug } = req.body;
+        const result = await medicineCategoryService.createCategory(req.body);
 
-        if (!name || !slug) {
-            throw new AppError(400, "name and slug are required");
-        }
-
-        const result = await medicineCategoryService.createCategory({ name, slug });
-
-        res.status(201).json({
-            success: true,
-            message: "Category created successfully",
-            data: result,
+        res.status(result.statusCode).json({
+            success: result.success,
+            message: result.message,
+            data: result.data,
         });
     } catch (error) {
         next(error);
@@ -35,9 +29,10 @@ const getAllCategories = async (
     try {
         const result = await medicineCategoryService.getAllCategories();
 
-        res.status(200).json({
-            success: true,
-            data: result,
+        res.status(result.statusCode).json({
+            success: result.success,
+            message: result.message,
+            data: result.data,
         });
     } catch (error) {
         next(error);
@@ -50,17 +45,14 @@ const getSingleCategory = async (
     next: NextFunction
 ) => {
     try {
-        const { id } = req.params;
+        const result = await medicineCategoryService.getSingleCategory(
+            req.params.id as string
+        );
 
-        if (!id) {
-            throw new AppError(400, "Category id is required");
-        }
-
-        const result = await medicineCategoryService.getSingleCategory(id as string);
-
-        res.status(200).json({
-            success: true,
-            data: result,
+        res.status(result.statusCode).json({
+            success: result.success,
+            message: result.message,
+            data: result.data,
         });
     } catch (error) {
         next(error);
@@ -70,24 +62,22 @@ const getSingleCategory = async (
 const deleteSingleCategory = async (
     req: Request,
     res: Response,
-    next: NextFunction) => {
+    next: NextFunction
+) => {
     try {
+        const result = await medicineCategoryService.deleteSingleCategory(
+            req.params.id as string
+        );
 
-        const { id } = req.params;
-
-        if (!id) {
-            throw new AppError(400, "Category id is required");
-        }
-
-        const result = await medicineCategoryService.deleteSingleCategory(id as string)
-        res.status(200).json({
-            success: true,
-            data: result,
+        res.status(result.statusCode).json({
+            success: result.success,
+            message: result.message,
+            data: result.data,
         });
     } catch (error) {
-        next(error)
+        next(error);
     }
-}
+};
 
 export const medicineCategoryController = {
     createCategory,

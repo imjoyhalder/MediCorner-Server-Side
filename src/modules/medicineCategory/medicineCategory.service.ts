@@ -7,27 +7,69 @@ interface CreateCategoryPayload {
 }
 
 const createCategory = async (payload: CreateCategoryPayload) => {
-    if (!payload.name || !payload.slug) {
-        throw new AppError(400, "name and slug are required");
+    const { name, slug } = payload;
+
+    //  validation
+    if (!name || !slug) {
+        return {
+            success: false,
+            statusCode: 400,
+            message: "Name and slug are required",
+            data: null,
+        };
     }
 
-    const category = await prisma.medicineCategory.create({
-        data: {
-            name: payload.name,
-            slug: payload.slug,
+    //  duplicate check
+    const existingCategory = await prisma.medicineCategory.findFirst({
+        where: {
+            OR: [{ name }, { slug }],
         },
     });
 
-    return category;
+    if (existingCategory) {
+        return {
+            success: false,
+            statusCode: 409,
+            message: "Category already exists with same name or slug",
+            data: null,
+        };
+    }
+
+    //  create
+    const category = await prisma.medicineCategory.create({
+        data: { name, slug },
+    });
+
+    return {
+        success: true,
+        statusCode: 201,
+        message: "Category created successfully",
+        data: category,
+    };
 };
 
 const getAllCategories = async () => {
     const categories = await prisma.medicineCategory.findMany({});
 
-    return categories;
+    return {
+        success: true,
+        statusCode: 200,
+        message: "Categories fetched successfully",
+        data: categories,
+    };
 };
 
+// GET SINGLE Category
 const getSingleCategory = async (id: string) => {
+    if (!id) {
+        return {
+            success: false,
+            statusCode: 400,
+            message: "Category id is required",
+            data: null,
+        };
+    }
+
     const category = await prisma.medicineCategory.findUnique({
         where: { id },
         include: {
@@ -36,34 +78,57 @@ const getSingleCategory = async (id: string) => {
     });
 
     if (!category) {
-        throw new AppError(404, "Category not found");
+        return {
+            success: false,
+            statusCode: 404,
+            message: "Category not found",
+            data: null,
+        };
     }
 
-    return category;
+    return {
+        success: true,
+        statusCode: 200,
+        message: "Category fetched successfully",
+        data: category,
+    };
 };
 
+// Delete
 const deleteSingleCategory = async (id: string) => {
+    if (!id) {
+        return {
+            success: false,
+            statusCode: 400,
+            message: "Category id is required",
+            data: null,
+        };
+    }
+
     const category = await prisma.medicineCategory.findUnique({
         where: { id },
-        include: {
-            medicines: true,
-        },
     });
 
     if (!category) {
-        throw new AppError(404, "Category not found");
+        return {
+            success: false,
+            statusCode: 404,
+            message: "Category not found",
+            data: null,
+        };
     }
 
-    const categoryDelete = await prisma.medicineCategory.delete({
+    const deletedCategory = await prisma.medicineCategory.delete({
         where: { id },
-        include: {
-            medicines: true,
-        },
-    })
+    });
 
-    return categoryDelete
-
-}
+    return {
+        success: true,
+        statusCode: 200,
+        message: "Category deleted successfully",
+        data: deletedCategory,
+    };
+};
 
 export const medicineCategoryService = {
     createCategory,
