@@ -140,7 +140,50 @@ const getSellerStats = async (sellerId: string) => {
     };
 };
 
+const getSellerChartData = async (sellerId: string) => {
+    // Orders grouped by date
+    const orders = await prisma.orderItem.findMany({
+        where: { sellerMedicine: { sellerId } },
+        include: { order: true, sellerMedicine: { include: { medicine: true } } },
+    });
+
+    const ordersOverTime: Record<string, number> = {};
+    const revenuePerMedicine: Record<string, number> = {};
+
+    orders.forEach((item) => {
+        const date = item.order.createdAt.toISOString().split("T")[0];
+        ordersOverTime[date] = (ordersOverTime[date] || 0) + 1;
+
+        const medName = item.sellerMedicine.medicine.name;
+        revenuePerMedicine[medName] = (revenuePerMedicine[medName] || 0) + item.price * item.quantity;
+    });
+
+    // Stock per medicine
+    const medicines = await prisma.sellerMedicine.findMany({
+        where: { sellerId },
+        include: { medicine: true },
+    });
+
+    const stockPerMedicine: Record<string, number> = {};
+    medicines.forEach((sm) => {
+        stockPerMedicine[sm.medicine.name] = sm.stockQuantity;
+    });
+
+    return {
+        success: true,
+        statusCode: 200,
+        message: "Seller chart data fetched",
+        data: {
+            ordersOverTime,
+            revenuePerMedicine,
+            stockPerMedicine,
+        },
+    };
+};
+
+
 export const sellerService = {
-    getSellerMedicines, 
-    getSellerStats
+    getSellerMedicines,
+    getSellerStats, 
+    getSellerChartData
 }
