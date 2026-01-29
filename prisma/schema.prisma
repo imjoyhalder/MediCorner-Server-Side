@@ -118,7 +118,7 @@ model Medicine {
   thumbnail    String?
 
   categoryId String
-  category   MedicineCategory @relation(fields: [categoryId], references: [id])
+  category   MedicineCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   sellers SellerMedicine[]
   reviews Review[]

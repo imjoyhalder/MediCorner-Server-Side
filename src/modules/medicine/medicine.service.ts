@@ -1,85 +1,61 @@
+
 import { prisma } from "../../lib/prisma";
-import { AppError } from "../../errors/AppError";
-import { parseExpiryDate } from "../../helper/dateFormater";
 import { Prisma } from "../../../generated/prisma/client";
 
 
-
-interface AddMedicineWithInventoryPayload {
-    name: string;
-    brandName: string;
-    genericName?: string;
-    manufacturer?: string;
-    description?: string;
-    categoryId: string;
-
-    price: number;
-    stockQuantity?: number;
-    batchNumber: string;
-    expiryDate?: Date;
-}
-
-
-interface UpdateMedicinePayload {
-    name?: string;
-    brandName?: string;
-    genericName?: string;
-    manufacturer?: string;
-    description?: string;
-
-    price?: number;
-    stockQuantity?: number;
-    batchNumber?: string;
-}
-
-interface GetAllMedicinePayload {
-    search?: string;
-    categoryId?: string;
-    manufacturer?: string;
-    minPrice?: number;
-    maxPrice?: number;
-    page: number;
-    limit: number;
-    skip: number;
-    sortBy: string;
-    sortOrder: "asc" | "desc";
-}
-
 const addMedicineWithInventory = async (
     sellerId: string,
-    payload: AddMedicineWithInventoryPayload
+    payload: any
 ) => {
+    const {
+        name,
+        brandName,
+        categoryId,
+        price,
+        batchNumber,
+    } = payload;
+
+    if (!name || !brandName || !categoryId || !price || !batchNumber) {
+        return {
+            success: false,
+            statusCode: 400,
+            message: "Required fields are missing",
+            data: null,
+        };
+    }
+
     return prisma.$transaction(async (tx) => {
-        console.log(payload);
         const category = await tx.medicineCategory.findUnique({
-            where: { id: payload.categoryId },
+            where: { id: categoryId },
         });
-        if (!category) throw new AppError(400, "Invalid categoryId");
 
-        // 2. check medicine exists
+        if (!category) {
+            return {
+                success: false,
+                statusCode: 400,
+                message: "Invalid categoryId",
+                data: null,
+            };
+        }
+
         let medicine = await tx.medicine.findFirst({
-            where: {
-                name: payload.name,
-                brandName: payload.brandName,
-            },
+            where: { name, brandName },
         });
 
-        // 3. if medicine not exists 
         if (!medicine) {
             medicine = await tx.medicine.create({
                 data: {
-                    name: payload.name,
-                    brandName: payload.brandName,
+                    name,
+                    brandName,
                     genericName: payload.genericName,
                     manufacturer: payload.manufacturer,
                     description: payload.description,
-                    categoryId: payload.categoryId,
+                    categoryId,
                     isOtc: true,
                 },
             });
         }
 
-        // 4. prevent same seller duplicate
         const alreadyAdded = await tx.sellerMedicine.findFirst({
             where: {
                 sellerId,
@@ -88,36 +64,36 @@ const addMedicineWithInventory = async (
         });
 
         if (alreadyAdded) {
-            throw new AppError(409, "Medicine already added by this seller");
-            // return {
-            //     success: false, 
-            //     message: "Medicine already added by this seller"
-            // }
+            return {
+                success: false,
+                statusCode: 409,
+                message: "Medicine already added by this seller",
+                data: null,
+            };
         }
 
-        // 5. create SellerMedicine (inventory)
-        const sellerMedicine = await tx.sellerMedicine.create({
+        const inventory = await tx.sellerMedicine.create({
             data: {
                 sellerId,
                 medicineId: medicine.id,
-                price: payload.price,
+                price,
                 stockQuantity: payload.stockQuantity ?? 0,
-                batchNumber: payload.batchNumber,
-                expiryDate: payload.expiryDate, // Date | undefined
+                batchNumber,
+                expiryDate: payload.expiryDate,
                 isAvailable: true,
             },
         });
 
-
         return {
-            medicine,
-            inventory: sellerMedicine,
+            success: true,
+            statusCode: 201,
+            message: "Medicine added successfully",
+            data: { medicine, inventory },
         };
     });
 };
 
-
-const getAllMedicines = async (payload: GetAllMedicinePayload) => {
+const getAllMedicines = async (payload: any) => {
     const {
         search,
         categoryId,
@@ -133,50 +109,24 @@ const getAllMedicines = async (payload: GetAllMedicinePayload) => {
 
     const andConditions: Prisma.MedicineWhereInput[] = [];
 
-    //  search (name / brand / generic)
     if (search) {
         andConditions.push({
             OR: [
-                {
-                    name: {
-                        contains: search,
-                        mode: "insensitive",
-                    },
-                },
-                {
-                    brandName: {
-                        contains: search,
-                        mode: "insensitive",
-                    },
-                },
-                {
-                    genericName: {
-                        contains: search,
-                        mode: "insensitive",
-                    },
-                },
+                { name: { contains: search, mode: "insensitive" } },
+                { brandName: { contains: search, mode: "insensitive" } },
+                { genericName: { contains: search, mode: "insensitive" } },
             ],
         });
     }
 
-    // category filter
-    if (categoryId) {
-        andConditions.push({
-            categoryId,
-        });
-    }
+    if (categoryId) andConditions.push({ categoryId });
 
-    //  manufacturer filter
     if (manufacturer) {
         andConditions.push({
-            manufacturer: {
-                contains: manufacturer,
-                mode: "insensitive",
-            },
+            manufacturer: { contains: manufacturer, mode: "insensitive" },
         });
     }
 
-    //  price filter (medicineSeller relation)
     if (minPrice !== undefined || maxPrice !== undefined) {
         andConditions.push({
             sellers: {
@@ -190,15 +140,11 @@ const getAllMedicines = async (payload: GetAllMedicinePayload) => {
         });
     }
 
-    const result = await prisma.medicine.findMany({
+    const data = await prisma.medicine.findMany({
         take: limit,
         skip,
-        where: {
-            AND: andConditions,
-        },
-        orderBy: {
-            [sortBy]: sortOrder,
-        },
+        where: { AND: andConditions },
+        orderBy: { [sortBy]: sortOrder },
         include: {
             category: true,
             reviews: true,
@@ -207,13 +153,14 @@ const getAllMedicines = async (payload: GetAllMedicinePayload) => {
     });
 
     const total = await prisma.medicine.count({
-        where: {
-            AND: andConditions,
-        },
+        where: { AND: andConditions },
     });
 
     return {
-        data: result,
+        success: true,
+        statusCode: 200,
+        message: "Medicines fetched successfully",
+        data,
         pagination: {
             total,
             page,
@@ -224,6 +171,15 @@ const getAllMedicines = async (payload: GetAllMedicinePayload) => {
 };
 
 const getSingleMedicine = async (id: string) => {
+    if (!id) {
+        return {
+            success: false,
+            statusCode: 400,
+            message: "Medicine id is required",
+            data: null,
+        };
+    }
+
     const medicine = await prisma.medicine.findUnique({
         where: { id },
         include: {
@@ -233,106 +189,126 @@ const getSingleMedicine = async (id: string) => {
         },
     });
 
-    if (!medicine) throw new AppError(404, "Medicine not found");
-    return medicine;
+    if (!medicine) {
+        return {
+            success: false,
+            statusCode: 404,
+            message: "Medicine not found",
+            data: null,
+        };
+    }
+
+    return {
+        success: true,
+        statusCode: 200,
+        message: "Medicine fetched successfully",
+        data: medicine,
+    };
 };
+
 
 const updateMedicine = async (
     medicineId: string,
     sellerId: string,
-    payload: UpdateMedicinePayload
+    payload: any
 ) => {
-    // check medicine exists
     const medicine = await prisma.medicine.findUnique({
         where: { id: medicineId },
     });
 
     if (!medicine) {
-        throw new AppError(404, "Medicine not found");
+        return {
+            success: false,
+            statusCode: 404,
+            message: "Medicine not found",
+            data: null,
+        };
     }
 
-    // check seller owns this medicine
     const sellerMedicine = await prisma.sellerMedicine.findFirst({
-        where: {
-            medicineId,
-            sellerId,
-        },
+        where: { medicineId, sellerId },
     });
 
     if (!sellerMedicine) {
-        throw new AppError(403, "You are not allowed to update this medicine");
+        return {
+            success: false,
+            statusCode: 403,
+            message: "You are not allowed to update this medicine",
+            data: null,
+        };
     }
-
-    // update medicine table (basic info)
-    const medicineUpdateData = {
-        name: payload.name,
-        brandName: payload.brandName,
-        genericName: payload.genericName,
-        manufacturer: payload.manufacturer,
-        description: payload.description,
-    };
 
     await prisma.medicine.update({
         where: { id: medicineId },
-        data: medicineUpdateData,
+        data: {
+            name: payload.name,
+            brandName: payload.brandName,
+            genericName: payload.genericName,
+            manufacturer: payload.manufacturer,
+            description: payload.description,
+        },
     });
-
-    // update medicineSeller table (inventory info)
-    const sellerUpdateData = {
-        price: payload.price,
-        stockQuantity: payload.stockQuantity,
-        batchNumber: payload.batchNumber,
-    };
 
     await prisma.sellerMedicine.update({
         where: { id: sellerMedicine.id },
-        data: sellerUpdateData,
-    });
-
-    return await prisma.medicine.findUnique({
-        where: { id: medicineId },
-        include: {
-            sellers: true,
-            category: true,
+        data: {
+            price: payload.price,
+            stockQuantity: payload.stockQuantity,
+            batchNumber: payload.batchNumber,
         },
     });
+
+    const updated = await prisma.medicine.findUnique({
+        where: { id: medicineId },
+        include: { sellers: true, category: true },
+    });
+
+    return {
+        success: true,
+        statusCode: 200,
+        message: "Medicine updated successfully",
+        data: updated,
+    };
 };
 
-
 const deleteMedicine = async (medicineId: string, sellerId: string) => {
-
-    //  check medicine exists
     const medicine = await prisma.medicine.findUnique({
         where: { id: medicineId },
     });
 
     if (!medicine) {
-        throw new AppError(404, "Medicine not found");
+        return {
+            success: false,
+            statusCode: 404,
+            message: "Medicine not found",
+            data: null,
+        };
     }
 
-    // check ownership
     const sellerMedicine = await prisma.sellerMedicine.findFirst({
-        where: {
-            medicineId,
-            sellerId,
-        },
+        where: { medicineId, sellerId },
     });
 
     if (!sellerMedicine) {
-        throw new AppError(
-            403,
-            "You are not allowed to delete this medicine"
-        );
+        return {
+            success: false,
+            statusCode: 403,
+            message: "You are not allowed to delete this medicine",
+            data: null,
+        };
     }
 
-    // delete order matters (FK safe)
     await prisma.medicine.delete({
         where: { id: medicineId },
     });
 
-    return true;
+    return {
+        success: true,
+        statusCode: 200,
+        message: "Medicine deleted successfully",
+        data: null,
+    };
 };
-
 
 export const medicineServices = {
     addMedicineWithInventory,
