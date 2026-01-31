@@ -38,12 +38,14 @@ export const auth = (...roles: UserRole[]) => {
                 });
             }
 
-            if (!session.user.emailVerified) {
-                return res.status(401).json({
-                    success: false,
-                    message: "Email verification required. Please verify your email!",
-                });
-            }
+            // if (!session.user.emailVerified) {
+            //     return res.status(401).json({
+            //         success: false,
+            //         message: "Email verification required. Please verify your email!",
+            //     });
+            // }
+
+            
 
             // Attach user to request
             req.user = {
@@ -54,6 +56,7 @@ export const auth = (...roles: UserRole[]) => {
                 emailVerified: session.user.emailVerified,
                 status: session.user.status as UserStatus,
             };
+
 
             // Always block banned users
             if (req.user.status === UserStatus.BAN) {

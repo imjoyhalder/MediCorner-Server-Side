@@ -170,7 +170,6 @@ const getAllMedicines = async (payload: any) => {
     };
 };
 
-
 // seller only can access his posted medicine 
 const getAllMedicinesBySeller = async (payload: any) => {
     const {

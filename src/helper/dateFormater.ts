@@ -11,7 +11,6 @@ export const parseExpiryDate = (value: string): Date | undefined => {
 
     const parsed = dayjs(value, formats, true); // strict mode
 
-
     if (!parsed.isValid()) {
         throw new AppError(400, "Invalid expiry date format");
     }
