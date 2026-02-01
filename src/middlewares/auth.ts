@@ -46,7 +46,6 @@ export const auth = (...roles: UserRole[]) => {
             // }
 
             
-
             // Attach user to request
             req.user = {
                 id: session.user.id,

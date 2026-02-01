@@ -127,13 +127,29 @@ const getAllMedicines = async (payload: any) => {
         });
     }
 
-    if (minPrice !== undefined || maxPrice !== undefined) {
+    // if (minPrice !== undefined || maxPrice !== undefined) {
+    //     andConditions.push({
+    //         sellers: {
+    //             some: {
+    //                 price: {
+    //                     gte: minPrice,
+    //                     lte: maxPrice,
+    //                 },
+    //             },
+    //         },
+    //     });
+    // }
+
+    const min = minPrice !== undefined ? Number(minPrice) : undefined;
+    const max = maxPrice !== undefined ? Number(maxPrice) : undefined;
+
+    if (min !== undefined || max !== undefined) {
         andConditions.push({
             sellers: {
                 some: {
                     price: {
-                        gte: minPrice,
-                        lte: maxPrice,
+                        ...(min !== undefined && !isNaN(min) && { gte: min }),
+                        ...(max !== undefined && !isNaN(max) && { lte: max }),
                     },
                 },
             },
@@ -148,7 +164,13 @@ const getAllMedicines = async (payload: any) => {
         include: {
             category: true,
             reviews: true,
-            // sellers: true,
+            sellers: {
+                select: {
+                    price: true,
+                    expiryDate: true,
+                    stockQuantity: true
+                }
+            }
         },
     });
 
