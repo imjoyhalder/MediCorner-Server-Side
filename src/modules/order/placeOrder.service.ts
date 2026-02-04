@@ -1,5 +1,6 @@
 
 
+import { OrderStatus } from "../../../generated/prisma/enums";
 import { prisma } from "../../lib/prisma";
 import { PlaceOrderPayload, ServiceResponse } from "../../types/order.types";
 
@@ -7,7 +8,7 @@ interface MedicineSummary {
     name: string;
     price: number;
     quantity: number;
-    medicineId: string; 
+    medicineId: string;
 }
 
 interface OrderSummary {
@@ -366,11 +367,13 @@ const updateOrderStatus = async (
 };
 
 //  Admin fetch all orders
-
 export const getAllOrders = async (): Promise<ServiceResponse> => {
     try {
-        //  Fetch all order items with seller + price + quantity
+        // Fetch delivered order items with seller info
         const orderItems = await prisma.orderItem.findMany({
+            where: {
+                status: OrderStatus.DELIVERED,
+            },
             include: {
                 sellerMedicine: {
                     include: {
@@ -380,36 +383,40 @@ export const getAllOrders = async (): Promise<ServiceResponse> => {
             },
         });
 
-        // Aggregate by seller
-        const summaryMap: Record<string, SellerSummaryItem> = {};
+        const summaryMap: Record<string, SellerSummaryItem & { orderIds: Set<string> }> = {};
 
         for (const item of orderItems) {
-            const sellerId = item.sellerMedicine.seller.id;
-            const sellerName = item.sellerMedicine.seller.name;
+            const seller = item.sellerMedicine.seller;
+            const sellerId = seller.id;
 
             if (!summaryMap[sellerId]) {
                 summaryMap[sellerId] = {
                     sellerId,
-                    sellerName,
+                    sellerName: seller.name,
                     totalOrders: 0,
                     totalProductsSold: 0,
                     totalRevenue: 0,
+                    orderIds: new Set(), // unique order count
                 };
             }
 
-            // Count this order only once per order?
-            // For simplicity, count order per item
-            summaryMap[sellerId].totalOrders += 1;
             summaryMap[sellerId].totalProductsSold += item.quantity;
             summaryMap[sellerId].totalRevenue += item.price * item.quantity;
+            summaryMap[sellerId].orderIds.add(item.orderId);
         }
 
-        const summaryArray = Object.values(summaryMap);
+        // Convert Set size → totalOrders
+        const summaryArray = Object.values(summaryMap).map(
+            ({ orderIds, ...rest }) => ({
+                ...rest,
+                totalOrders: orderIds.size,
+            })
+        );
 
         return {
             success: true,
             statusCode: 200,
-            message: "Seller summary fetched",
+            message: "Seller summary fetched successfully",
             data: summaryArray,
         };
     } catch (err: any) {
@@ -419,7 +426,91 @@ export const getAllOrders = async (): Promise<ServiceResponse> => {
             message: err.message || "Failed to fetch seller summary",
         };
     }
-}
+};
+
+export const getAllOrdersAdmin = async (): Promise<ServiceResponse> => {
+    try {
+        const orders = await prisma.order.findMany({
+            include: {
+                user: {
+                    select: {
+                        name: true,
+                        email: true,
+                        phone: true
+                    }
+                },
+                items: {
+                    include: {
+                        sellerMedicine: {
+                            include: {
+                                medicine: {
+                                    select: {
+                                        name: true,
+                                        brandName: true,
+                                        thumbnail: true
+                                    }
+                                },
+                                seller: {
+                                    select: {
+                                        name: true,
+                                        email: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: {
+                createdAt: "desc"
+            }
+        });
+
+        const formattedOrders = orders.flatMap((order) =>
+            order.items.map((item) => ({
+                orderId: order.id,
+                orderDate: order.createdAt,
+                customerName: order.user.name,
+                customerEmail: order.user.email,
+                customerPhone: order.user.phone || "N/A",
+
+                // Product Details
+                productName: item.sellerMedicine.medicine.name,
+                brandName: item.sellerMedicine.medicine.brandName,
+                thumbnail: item.sellerMedicine.medicine.thumbnail,
+
+                // Seller Details
+                sellerName: item.sellerMedicine.seller.name,
+                sellerEmail: item.sellerMedicine.seller.email,
+
+                // Pricing & Quantity
+                quantity: item.quantity,
+                unitPrice: item.price,
+                subTotal: item.price * item.quantity,
+
+                // Order Level Info
+                orderTotal: order.total,
+                shippingAddress: order.shippingAddress,
+                paymentMethod: order.paymentMethod,
+                itemStatus: item.status, // individual item status
+                overallStatus: order.status // overall order status
+            }))
+        );
+
+        return {
+            success: true,
+            statusCode: 200,
+            message: "All orders retrieved and formatted for admin dashboard",
+            data: formattedOrders,
+        };
+    } catch (err: any) {
+        return {
+            success: false,
+            statusCode: 500,
+            message: err.message || "An error occurred while fetching orders",
+        };
+    }
+};
 
 export const OrderServices = {
     placeOrder,

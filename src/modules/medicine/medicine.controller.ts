@@ -22,10 +22,10 @@ const getAllMedicines = async (req: Request, res: Response, next: NextFunction) 
         const result = await medicineServices.getAllMedicines({
             ...req.query,
             page: Number(req.query.page || 1),
-            limit: Number(req.query.limit || 10),
+            limit: Number(req.query.limit || 12),
             skip:
                 (Number(req.query.page || 1) - 1) *
-                Number(req.query.limit || 10),
+                Number(req.query.limit || 12),
         });
 
         res.status(result.statusCode).json(result);
@@ -68,6 +68,21 @@ const deleteMedicine = async (req: Request, res: Response, next: NextFunction) =
     }
 };
 
+const getAllManufacturers = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const manufacturers = await medicineServices.getAllManufacturers()
+
+        res.status(200).json({
+            success: true,
+            statusCode: 200,
+            message: "Manufacturers fetched successfully",
+            data: manufacturers
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
 
 export const medicineController = {
     createMedicine,
@@ -75,4 +90,5 @@ export const medicineController = {
     getSingleMedicine,
     updateMedicine,
     deleteMedicine,
+    getAllManufacturers
 };

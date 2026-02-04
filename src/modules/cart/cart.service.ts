@@ -3,6 +3,11 @@ import { AddToCartPayload } from "../../types/cart.types";
 
 import { ServiceResponse } from "../../types/order.types";
 
+export interface updateQuantity {
+    sellerMedicineId: string,
+    quantity: number
+}
+
 export const addToCart = async (userId: string, payload: AddToCartPayload): Promise<ServiceResponse> => {
     const { sellerMedicineId, quantity } = payload;
 
@@ -38,6 +43,48 @@ export const addToCart = async (userId: string, payload: AddToCartPayload): Prom
 
     return { success: true, statusCode: 200, message: "Added to cart" };
 };
+
+export const updateQuantity = async (userId: string, payload: updateQuantity): Promise<ServiceResponse> => {
+    try {
+        if (payload.quantity < 1) {
+            return { success: false, statusCode: 400, message: "Quantity must be at least 1" };
+        }
+
+        let cart = await prisma.cart.findUnique({
+            where: { userId },
+        });
+
+        if (!cart) {
+            return { success: false, statusCode: 404, message: "Cart not found" };
+        }
+
+        const item = await prisma.cartItem.findFirst({
+            where: { cartId: cart.id, sellerMedicineId: payload.sellerMedicineId  },
+        });
+
+        if (!item) {
+            return { success: false, statusCode: 404, message: "Cart item not found" };
+        }
+
+        // Update quantity
+        const updatedItem = await prisma.cartItem.update({
+            where: { id: item.id },
+            data: { quantity: payload.quantity },
+            include: {
+                sellerMedicine: {
+                    include: {
+                        medicine: true,
+                        seller: true,
+                    },
+                },
+            },
+        });
+
+        return { success: true, statusCode: 200, message: "Quantity updated", data: updatedItem };
+    } catch (error: any) {
+        return { success: false, statusCode: 500, message: error.message || "Failed to update quantity" };
+    }
+}
 
 export const getCart = async (userId: string): Promise<ServiceResponse> => {
     const cart = await prisma.cart.findUnique({
@@ -83,7 +130,6 @@ export const deleteCartItem = async (
         };
     }
 
-    //  Item belongs to this cart কিনা verify
     const cartItem = await prisma.cartItem.findFirst({
         where: {
             id: cartItemId,

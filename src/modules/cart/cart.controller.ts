@@ -32,10 +32,24 @@ export const getCartController = async (req: Request, res: Response) => {
     }
 };
 
+export const updateQuantityController = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user!.id;
+        const result = await CartService.updateQuantity(userId, req.body);
+
+        return res.status(result.statusCode).json(result);
+    } catch (error: any) {
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to update quantity!",
+        });
+    }
+}
+
 export const deleteCartItemController = async (req: Request, res: Response) => {
     try {
         const userId = req.user!.id;
-        const { cartItemId } = req.params;
+        const { cartItemId } = req.body;
 
         const result = await CartService.deleteCartItem(userId, cartItemId as string);
 

@@ -35,7 +35,9 @@ app.use('/api/v1/order', orderRouter)
 app.use('/api/v1/cart', CartRouter)
 
 app.use('/api/v1/admin', adminRouter)
-app.use('/api/v1/seller', sellerRouter)
+app.use('/api/v1/seller', sellerRouter
+    
+)
 app.use('/api/v1/user', userRouter)
 
 

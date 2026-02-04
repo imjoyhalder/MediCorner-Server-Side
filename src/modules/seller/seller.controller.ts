@@ -8,12 +8,12 @@ const getSellerMedicines = async (
     next: NextFunction
 ) => {
     try {
-        const sellerId = req.user?.id; // from auth middleware
+        const sellerId = req.user?.id; 
         if (!sellerId) {
             return res.status(401).json({ success: false, message: "Unauthorized" });
         }
 
-        const payload = req.query; // filter, search, pagination from query
+        const payload = req.query; 
         const result = await sellerService.getSellerMedicines(sellerId, payload);
 
         res.status(result.statusCode).json(result);

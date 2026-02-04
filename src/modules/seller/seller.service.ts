@@ -69,6 +69,7 @@ const getSellerMedicines = async (sellerId: string, payload: any) => {
     const data: SellerMedicineSummary[] = dataRaw.map((item) => ({
         sellerMedicineId: item.id,
         medicineName: item.medicine.name,
+        medicineId: item.medicine.id,
         brandName: item.medicine.brandName,
         genericName: item.medicine.genericName ?? undefined,
         categoryName: item.medicine.category?.name ?? undefined,
@@ -144,7 +145,10 @@ const getSellerChartData = async (sellerId: string) => {
     // Orders grouped by date
     const orders = await prisma.orderItem.findMany({
         where: { sellerMedicine: { sellerId } },
-        include: { order: true, sellerMedicine: { include: { medicine: true } } },
+        include: { 
+            order: true, 
+            sellerMedicine: { include: { medicine: true } } 
+        },
     });
 
     const ordersOverTime: Record<string, number> = {};
@@ -154,11 +158,12 @@ const getSellerChartData = async (sellerId: string) => {
         const date = item.order.createdAt.toISOString().split("T")[0];
         ordersOverTime[date] = (ordersOverTime[date] || 0) + 1;
 
-        const medName = item.sellerMedicine.medicine.name;
-        revenuePerMedicine[medName] = (revenuePerMedicine[medName] || 0) + item.price * item.quantity;
+        if (item.order.status === "DELIVERED") {
+            const medName = item.sellerMedicine.medicine.name;
+            revenuePerMedicine[medName] = (revenuePerMedicine[medName] || 0) + (item.price * item.quantity);
+        }
     });
 
-    // Stock per medicine
     const medicines = await prisma.sellerMedicine.findMany({
         where: { sellerId },
         include: { medicine: true },

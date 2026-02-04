@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { OrderServices } from './placeOrder.service';
+import { OrderServices, getAllOrdersAdmin } from './placeOrder.service';
 import { AppError } from '../../errors/AppError';
 // import { OrderServices } from './order.service';
 
@@ -15,9 +15,9 @@ const placeOrder = async (req: Request, res: Response, next: NextFunction) => {
 
         const payload = req.body;
 
-        if (!payload?.cartId) {
-            throw new AppError(400, 'Cart ID is required');
-        }
+        // if (!payload?.cartId) {
+        //     throw new AppError(400, 'Cart ID is required');
+        // }
 
         const result = await OrderServices.placeOrder(userId, payload);
         res.status(result.statusCode).json(result);
@@ -116,9 +116,17 @@ const updateOrderStatus = async (req: Request, res: Response, next: NextFunction
     }
 };
 
-/**
- * GET ALL ORDERS (Admin)
- */
+const getAllOrdersForAdmin = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const result = await getAllOrdersAdmin();
+
+        res.status(result.statusCode).json(result);
+    } catch (error) {
+
+        next(error);
+    }
+};
+
 const getAllOrders = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const result = await OrderServices.getAllOrders();
@@ -135,4 +143,5 @@ export const OrderController = {
     getSellerOrders,
     updateOrderStatus,
     getAllOrders,
+    getAllOrdersForAdmin
 };

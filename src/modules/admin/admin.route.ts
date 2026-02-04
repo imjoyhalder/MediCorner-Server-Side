@@ -5,7 +5,7 @@ import auth, { UserRole } from '../../middlewares/auth';
 
 const router = express.Router()
 
-router.get('/',auth(UserRole.ADMIN), userController.getUsers)
+router.get('/users',auth(UserRole.ADMIN), userController.getUsers)
 router.patch('/ban/:userId',auth(UserRole.ADMIN),userController.banUser)
 router.get('/statistics',auth(UserRole.ADMIN),userController.getAdminChartData)
 

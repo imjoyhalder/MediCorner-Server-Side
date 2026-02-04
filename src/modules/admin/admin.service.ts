@@ -1,11 +1,37 @@
+import { ServiceResponse } from './../../types/order.types';
 
-import { UserStatus } from "../../../generated/prisma/enums"
+import { OrderStatus, UserRole, UserStatus } from "../../../generated/prisma/enums"
 import { prisma } from "../../lib/prisma"
 
 
-const getUsers = async () => {
-    return await prisma.user.findMany()
-}
+export const getUsers = async (): Promise<ServiceResponse> => {
+    try {
+
+        const users = await prisma.user.findMany({
+            where: {
+                role: {
+                    in: [UserRole.SELLER, UserRole.CUSTOMER],
+                },
+            },
+            orderBy: {
+                createdAt: 'desc',
+            },
+        });
+
+        return {
+            success: true,
+            statusCode: 200,
+            message: "Users retrieved successfully",
+            data: users,
+        };
+    } catch (error: any) {
+        return {
+            success: false,
+            statusCode: 500,
+            message: error.message || "Failed to fetch users",
+        };
+    }
+};
 
 const banUser = async (userId: string) => {
     const isExist = await prisma.user.findUnique({
@@ -13,9 +39,18 @@ const banUser = async (userId: string) => {
             id: userId
         }
     })
+
     if (!isExist) {
         return {
-            message: "user not found"
+            success: false,
+            message: "User not found"
+        }
+    }
+
+    if (isExist.role === 'ADMIN') {
+        return {
+            success: false,
+            message: "Cannot ban an administrator"
         }
     }
 
@@ -27,8 +62,10 @@ const banUser = async (userId: string) => {
             status: UserStatus.BAN
         }
     })
+
     return {
-        message: `${isExist.id} number use ban successfully`,
+        success: true,
+        message: `${isExist.name || isExist.id} has been banned successfully`,
         result
     }
 }
@@ -47,11 +84,20 @@ const getAdminChartData = async () => {
     const revenueOverTime: Record<string, number> = {};
     const topMedicines: Record<string, number> = {};
 
+    let totalRevenue = 0
+    let pendingOrders = 0
     orders.forEach((item) => {
         const date = item.order.createdAt.toISOString().split("T")[0];
 
+        if (item.status === OrderStatus.DELIVERED) {
+            revenueOverTime[date] = (revenueOverTime[date] || 0) + item.price * item.quantity;
+            totalRevenue += item.price * item.quantity
+        }
+        if (item.status === OrderStatus.PROCESSING) {
+            pendingOrders += 1
+        }
+
         ordersOverTime[date] = (ordersOverTime[date] || 0) + 1;
-        revenueOverTime[date] = (revenueOverTime[date] || 0) + item.price * item.quantity;
 
         const medName = item.sellerMedicine.medicine.name;
         topMedicines[medName] = (topMedicines[medName] || 0) + item.quantity;
@@ -65,6 +111,8 @@ const getAdminChartData = async () => {
             usersVsSellers: { users: totalUsers, sellers: totalSellers },
             ordersOverTime,
             revenueOverTime,
+            totalRevenue,
+            pendingOrders,
             topMedicines,
         },
     };
@@ -72,6 +120,6 @@ const getAdminChartData = async () => {
 
 export const adminServices = {
     getUsers,
-    banUser, 
+    banUser,
     getAdminChartData
 }

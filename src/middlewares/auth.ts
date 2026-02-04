@@ -64,7 +64,7 @@ export const auth = (...roles: UserRole[]) => {
                     message: "Your account has been banned.",
                 });
             }
-
+            
             // Role-based access
             if (roles.length && !roles.includes(req.user.role as UserRole)) {
                 return res.status(403).json({
