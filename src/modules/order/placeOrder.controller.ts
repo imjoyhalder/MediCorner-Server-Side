@@ -65,7 +65,6 @@ const cancelOrder = async (req: Request, res: Response, next: NextFunction) => {
 
 
 
-
 // ========== SELLER ==========
 const getSellerOrders = async (req: Request, res: Response, next: NextFunction) => {
     try {

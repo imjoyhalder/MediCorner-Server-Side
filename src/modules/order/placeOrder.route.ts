@@ -7,8 +7,8 @@ const router = express.Router()
 
 // User
 router.post('/', auth(UserRole.CUSTOMER), OrderController.placeOrder);
-router.get('/me', auth(UserRole.CUSTOMER), OrderController.getMyOrders);
-router.patch('/cancel/:id', auth(UserRole.CUSTOMER), OrderController.cancelOrder);
+router.get('/my-orders', auth(UserRole.CUSTOMER), OrderController.getMyOrders);
+router.patch('/my-orders/cancel/:id', auth(UserRole.CUSTOMER), OrderController.cancelOrder);
 
 // Seller
 router.get('/seller', auth(UserRole.SELLER), OrderController.getSellerOrders);

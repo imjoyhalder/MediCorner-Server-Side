@@ -5,7 +5,7 @@ import { userController } from "./user.controller"
 
 const router = express.Router()
 
-router.put('/profile',auth(UserRole.CUSTOMER),userController.updateUserProfile)
+router.put('/update-profile',auth(UserRole.CUSTOMER),userController.updateUserProfile)
 router.put('/role',auth(UserRole.CUSTOMER),userController.updateUserRole)
 
 export const userRouter: Router = router 
