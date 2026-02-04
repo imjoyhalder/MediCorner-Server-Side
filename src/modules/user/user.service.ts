@@ -61,7 +61,7 @@ export const updateUserRoleOnRegister = async (
 
         const updatedUser = await prisma.user.update({
             where: { email },
-            data: { role: role }, 
+            data: { role: role },
         });
 
         return {
@@ -75,6 +75,44 @@ export const updateUserRoleOnRegister = async (
             success: false,
             statusCode: 500,
             message: error.message || "Failed to update profile",
+        };
+    }
+};
+
+export const getSingleCustomerData = async (
+    userId: string
+): Promise<ServiceResponse> => {
+    try {
+        const user = await prisma.user.findUnique({
+            where: {
+                id: userId
+            }, 
+            select: {
+                id: true,
+                phone: true
+            }
+        });
+
+        if (!user) {
+            return {
+                success: false,
+                statusCode: 404,
+                message: "User not found",
+            };
+        }
+
+        return {
+            success: true,
+            statusCode: 200,
+            message: "Customer data retrieved successfully",
+            data: user,
+        };
+
+    } catch (error: any) {
+        return {
+            success: false,
+            statusCode: 500,
+            message: error.message || "Failed to retrieve customer data",
         };
     }
 };

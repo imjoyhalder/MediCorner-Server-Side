@@ -1,6 +1,6 @@
 
 import { Request, Response, NextFunction } from "express";
-import { updateUserRoleOnRegister, userServices } from "./user.service";
+import { getSingleCustomerData, updateUserRoleOnRegister, userServices } from "./user.service";
 
 
 const updateUserProfile = async (
@@ -43,7 +43,22 @@ export const updateUserRole = async (
 };
 
 
+export const getSingleCustomerDataController = async (req: Request,
+    res: Response,
+    next: NextFunction) => {
+    try {
+        const userId = req.user?.id;
+
+
+        const result = await getSingleCustomerData(userId as string)
+        res.status(result.statusCode).json(result);
+    } catch (error) {
+        next(error);
+    }
+}
+
 export const userController = {
-    updateUserProfile, 
-    updateUserRole
+    updateUserProfile,
+    updateUserRole,
+    getSingleCustomerDataController
 }

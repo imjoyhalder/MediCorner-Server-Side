@@ -7,7 +7,7 @@ const createReview = async (
     next: NextFunction
 ) => {
     try {
-        const userId = req.user?.id;  // Ensure this is string id from auth
+        const userId = req.user?.id;  
         if (!userId) {
             return res.status(401).json({
                 success: false,
@@ -15,7 +15,7 @@ const createReview = async (
             });
         }
 
-        // inject userId
+
         req.body.userId = userId;
 
         const result = await reviewService.createReview(req.body);
