@@ -12,10 +12,9 @@ router.patch('/cancel/:id', auth(UserRole.CUSTOMER), OrderController.cancelOrder
 
 // Seller
 router.get('/seller', auth(UserRole.SELLER), OrderController.getSellerOrders);
-router.patch('/seller/:id/status', auth(UserRole.SELLER), OrderController.updateOrderStatus);
+router.patch('/seller/batch-status', auth(UserRole.SELLER), OrderController.updateBatchStatus);
 
 // Admin
-router.get('/all', auth(UserRole.ADMIN), OrderController.getAllOrders);
 router.get('/all/admin', auth(UserRole.ADMIN), OrderController.getAllOrdersForAdmin);
 
 export const orderRouter: Router = router

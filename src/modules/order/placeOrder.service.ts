@@ -266,168 +266,105 @@ const cancelOrder = async (
 };
 
 
-//  Seller sees their orders
-const getSellerOrders = async (
-    sellerId: string
-): Promise<ServiceResponse> => {
+//================= SELLER ===============
+export const getSellerOrders = async (sellerId: string): Promise<ServiceResponse> => {
     try {
-        const orders = await prisma.order.findMany({
+        const rawOrders = await prisma.order.findMany({
             where: {
-                items: {
-                    some: { sellerMedicine: { sellerId } },
-                },
+                // Shudhu oi order gulo nibe jekhane ei seller-er ontoto ekta item ache
+                items: { some: { sellerMedicine: { sellerId } } },
             },
             orderBy: { createdAt: "desc" },
             include: {
-                user: true,
+                user: { select: { name: true, email: true, phone: true, image: true } },
                 items: {
-                    where: {
-                        sellerMedicine: { sellerId },
-                    },
+                    // Critical: Filter items so the seller ONLY sees their own products
+                    where: { sellerMedicine: { sellerId } },
                     include: {
-                        sellerMedicine: {
-                            include: { medicine: true },
-                        },
+                        sellerMedicine: { include: { medicine: true } },
                     },
                 },
             },
         });
 
+        const manipulatedData = rawOrders.map((order) => {
+            // Calculate seller-specific subtotal
+            const sellerSubtotal = order.items.reduce(
+                (sum, item) => sum + item.price * item.quantity,
+                0
+            );
+
+            // Determine Batch Status for THIS Seller only
+            // Jehetu upore 'items' filter kora, ekhane shudhu ei seller-er item-i ache
+            const allItemStatus = order.items.map(i => i.status);
+
+            // Jodi seller-er shob item 'DELIVERED' hoy, seller tar dashboard-e 'DELIVERED' dekhbe
+            const sellerBatchStatus = allItemStatus.every(s => s === allItemStatus[0])
+                ? allItemStatus[0]
+                : "PROCESSING"; // Default jodi status different hoy (e.g. 1ta Shipped, 1ta Pending)
+
+            return {
+                ...order,
+                sellerSubtotal,
+                batchStatus: sellerBatchStatus, // Seller-er nijer item-er grouped status
+                itemCount: order.items.length
+            };
+        });
+
         return {
             success: true,
             statusCode: 200,
-            message: "Seller orders fetched",
-            data: orders,
+            message: "Seller-specific orders fetched",
+            data: manipulatedData,
         };
     } catch (err: any) {
-        return {
-            success: false,
-            statusCode: 500,
-            message: err.message || "Failed to fetch seller orders",
-        };
+        return { success: false, statusCode: 500, message: err.message };
     }
 };
 
-
-// Seller updates order status
-const updateOrderStatus = async (
-    sellerId: string,
+export const updateSellerBatchStatus = async (
     orderId: string,
-    status: "SHIPPED" | "DELIVERED"
-): Promise<ServiceResponse> => {
-    try {
-        // update seller's order items only
-        const updatedItems = await prisma.orderItem.updateMany({
+    sellerId: string,
+    status: OrderStatus
+) => {
+    return await prisma.$transaction(async (tx) => {
+        // 1. First, update items belonging ONLY to this seller
+        const updateCount = await tx.orderItem.updateMany({
             where: {
                 orderId,
-                sellerMedicine: { sellerId },
-                status: { not: "CANCELLED" },
+                sellerMedicine: { sellerId }
             },
-            data: { status },
+            data: { status }
         });
 
-        if (updatedItems.count === 0) {
-            return {
-                success: false,
-                statusCode: 403,
-                message: "No items to update",
-            };
-        }
-
-        // recalculate order status
-        const allItems = await prisma.orderItem.findMany({
-            where: { orderId },
+        // 2. Check if ALL items in this order (from all sellers) are now delivered
+        const allItems = await tx.orderItem.findMany({
+            where: { orderId }
         });
 
-        let newOrderStatus: any = "PROCESSING";
+        const isFullyDelivered = allItems.every(item => item.status === "DELIVERED");
+        const isAnyShipped = allItems.some(item => item.status === "SHIPPED");
 
-        if (allItems.every(i => i.status === "DELIVERED")) {
-            newOrderStatus = "DELIVERED";
-        } else if (allItems.some(i => i.status === "SHIPPED")) {
-            newOrderStatus = "SHIPPED";
+        // 3. Update the main Order status for the Customer
+        let finalStatus: OrderStatus = "PROCESSING";
+        if (isFullyDelivered) {
+            finalStatus = "DELIVERED";
+        } else if (isAnyShipped) {
+            finalStatus = "SHIPPED";
+        } else {
+            finalStatus = "PROCESSING";
         }
 
-        await prisma.order.update({
+        await tx.order.update({
             where: { id: orderId },
-            data: { status: newOrderStatus },
+            data: { status: finalStatus }
         });
 
-        return {
-            success: true,
-            statusCode: 200,
-            message: "Order status updated",
-        };
-    } catch (err: any) {
-        return {
-            success: false,
-            statusCode: 500,
-            message: err.message || "Failed to update status",
-        };
-    }
+        return updateCount;
+    });
 };
 
-//  Admin fetch all orders
-export const getAllOrders = async (): Promise<ServiceResponse> => {
-    try {
-        // Fetch delivered order items with seller info
-        const orderItems = await prisma.orderItem.findMany({
-            where: {
-                status: OrderStatus.DELIVERED,
-            },
-            include: {
-                sellerMedicine: {
-                    include: {
-                        seller: true,
-                    },
-                },
-            },
-        });
-
-        const summaryMap: Record<string, SellerSummaryItem & { orderIds: Set<string> }> = {};
-
-        for (const item of orderItems) {
-            const seller = item.sellerMedicine.seller;
-            const sellerId = seller.id;
-
-            if (!summaryMap[sellerId]) {
-                summaryMap[sellerId] = {
-                    sellerId,
-                    sellerName: seller.name,
-                    totalOrders: 0,
-                    totalProductsSold: 0,
-                    totalRevenue: 0,
-                    orderIds: new Set(), // unique order count
-                };
-            }
-
-            summaryMap[sellerId].totalProductsSold += item.quantity;
-            summaryMap[sellerId].totalRevenue += item.price * item.quantity;
-            summaryMap[sellerId].orderIds.add(item.orderId);
-        }
-
-        // Convert Set size → totalOrders
-        const summaryArray = Object.values(summaryMap).map(
-            ({ orderIds, ...rest }) => ({
-                ...rest,
-                totalOrders: orderIds.size,
-            })
-        );
-
-        return {
-            success: true,
-            statusCode: 200,
-            message: "Seller summary fetched successfully",
-            data: summaryArray,
-        };
-    } catch (err: any) {
-        return {
-            success: false,
-            statusCode: 500,
-            message: err.message || "Failed to fetch seller summary",
-        };
-    }
-};
-
+// ================== ADMIN ====================
 export const getAllOrdersAdmin = async (): Promise<ServiceResponse> => {
     try {
         const orders = await prisma.order.findMany({
@@ -512,11 +449,11 @@ export const getAllOrdersAdmin = async (): Promise<ServiceResponse> => {
     }
 };
 
+
 export const OrderServices = {
     placeOrder,
     getMyOrders,
     cancelOrder,
-    getAllOrders,
-    updateOrderStatus,
-    getSellerOrders
+    getSellerOrders,
+    updateSellerBatchStatus,
 }
