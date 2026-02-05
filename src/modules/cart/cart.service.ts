@@ -117,7 +117,7 @@ export const deleteCartItem = async (
     cartItemId: string
 ): Promise<ServiceResponse> => {
 
-    //  User cart check
+   
     const cart = await prisma.cart.findUnique({
         where: { userId },
     });

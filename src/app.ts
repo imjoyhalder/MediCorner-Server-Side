@@ -18,25 +18,30 @@ const app: Application = express()
 
 app.use(cors({
     origin: [
-        process.env.APP_URL || 'http://localhost:5000'
+        'http://localhost:3000', 
+        "https://medicorner-client.vercel.app",
+        "https://medicorner-client-11v3g6lqp-joy-halders-projects.vercel.app"
     ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE','PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 }))
+
 
 app.all("/api/auth/*splat", toNodeHandler(auth));
 
 app.use(express.json())
 
-app.use('/api/v1/medicine', medicineRouter)
-app.use('/api/v1/review', reviewRouter)
+app.use('/medicine', medicineRouter)
+app.use('/review', reviewRouter)
 
-app.use('/api/v1/categories', medicineCategoryRoutes)
-app.use('/api/v1/order', orderRouter)
-app.use('/api/v1/cart', CartRouter)
+app.use('/categories', medicineCategoryRoutes)
+app.use('/order', orderRouter)
+app.use('/cart', CartRouter)
 
-app.use('/api/v1/admin', adminRouter)
-app.use('/api/v1/seller', sellerRouter)
-app.use('/api/v1/user', userRouter)
+app.use('/admin', adminRouter)
+app.use('/seller', sellerRouter)
+app.use('/user', userRouter)
 
 
 app.get('/', (req: Request, res: Response) => {

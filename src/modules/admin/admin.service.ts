@@ -71,48 +71,77 @@ const banUser = async (userId: string) => {
 }
 
 const getAdminChartData = async () => {
-    // Users vs sellers
     const totalUsers = await prisma.user.count({ where: { role: "CUSTOMER" } });
     const totalSellers = await prisma.user.count({ where: { role: "SELLER" } });
 
-    // Orders grouped by date and revenue
-    const orders = await prisma.orderItem.findMany({
-        include: { order: true, sellerMedicine: { include: { medicine: true } } },
+
+    const orderItems = await prisma.orderItem.findMany({
+        include: {
+            order: true,
+            sellerMedicine: { include: { medicine: true } }
+        },
     });
 
-    const ordersOverTime: Record<string, number> = {};
-    const revenueOverTime: Record<string, number> = {};
-    const topMedicines: Record<string, number> = {};
+    const ordersMap: Record<string, Set<string>> = {}; // Unique Order counting er jonno
+    const revenueMap: Record<string, number> = {};
+    const topMedicinesMap: Record<string, number> = {};
 
-    let totalRevenue = 0
-    let pendingOrders = 0
-    orders.forEach((item) => {
+    let totalRevenue = 0;
+    let pendingOrdersCount = 0;
+
+    orderItems.forEach((item) => {
         const date = item.order.createdAt.toISOString().split("T")[0];
+        const orderStatus = item.order.status;
 
-        if (item.status === OrderStatus.DELIVERED) {
-            revenueOverTime[date] = (revenueOverTime[date] || 0) + item.price * item.quantity;
-            totalRevenue += item.price * item.quantity
+
+        if (orderStatus === "DELIVERED") {
+            const itemTotal = item.price * item.quantity;
+            revenueMap[date] = (revenueMap[date] || 0) + itemTotal;
+            totalRevenue += itemTotal;
         }
-        if (item.status === OrderStatus.PROCESSING) {
-            pendingOrders += 1
+
+
+        if (orderStatus === "PROCESSING") {
+            pendingOrdersCount += 1;
         }
 
-        ordersOverTime[date] = (ordersOverTime[date] || 0) + 1;
 
-        const medName = item.sellerMedicine.medicine.name;
-        topMedicines[medName] = (topMedicines[medName] || 0) + item.quantity;
+        if (!ordersMap[date]) ordersMap[date] = new Set();
+        ordersMap[date].add(item.orderId);
+
+        // ৪. Top Medicines (Based on sales quantity)
+        if (orderStatus === "DELIVERED") {
+            const medName = item.sellerMedicine.medicine.name;
+            topMedicinesMap[medName] = (topMedicinesMap[medName] || 0) + item.quantity;
+        }
     });
+
+
+    const ordersOverTime = Object.entries(ordersMap).map(([date, orderSet]) => ({
+        date,
+        count: orderSet.size, // Unique orders count
+    })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    const revenueOverTime = Object.entries(revenueMap).map(([date, amount]) => ({
+        date,
+        revenue: amount,
+    })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    const topMedicines = Object.entries(topMedicinesMap)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
 
     return {
         success: true,
         statusCode: 200,
-        message: "Admin chart data fetched",
+        message: "Admin statistics calculated accurately",
         data: {
             usersVsSellers: { users: totalUsers, sellers: totalSellers },
             ordersOverTime,
             revenueOverTime,
-            totalRevenue,
-            pendingOrders,
+            totalRevenue: Number(totalRevenue.toFixed(2)),
+            pendingOrders: pendingOrdersCount,
             topMedicines,
         },
     };

@@ -101,22 +101,66 @@ const getSellerMedicines = async (sellerId: string, payload: any) => {
     };
 };
 
+// const getSellerStats = async (sellerId: string) => {
+//     // Total medicines posted
+//     const totalMedicines = await prisma.sellerMedicine.count({ where: { sellerId } });
+
+//     //  Orders for seller's medicines
+//     const orderItems = await prisma.orderItem.findMany({
+//         where: { sellerMedicine: { sellerId } },
+//         include: { sellerMedicine: true },
+//     });
+
+//     const totalOrders = orderItems.length;
+
+//     //  Revenue (sum of price * quantity)
+//     const totalRevenue = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+//     //  Reviews for seller's medicines
+//     const medicines = await prisma.sellerMedicine.findMany({
+//         where: { sellerId },
+//         include: { medicine: { include: { reviews: true } } },
+//     });
+
+//     const totalReviews = medicines.reduce((sum, sm) => sum + sm.medicine.reviews.length, 0);
+
+//     const allRatings = medicines.flatMap((sm) => sm.medicine.reviews.map((r) => r.rating));
+//     const averageRating = allRatings.length > 0 ? allRatings.reduce((a, b) => a! + b!, 0)! / allRatings.length : 0;
+
+//     return {
+//         success: true,
+//         statusCode: 200,
+//         message: "Seller statistics fetched successfully",
+//         data: {
+//             totalMedicines,
+//             totalOrders,
+//             totalRevenue,
+//             totalReviews,
+//             averageRating: Number(averageRating.toFixed(2)),
+//         },
+//     };
+// };
+
 const getSellerStats = async (sellerId: string) => {
-    // Total medicines posted
+
     const totalMedicines = await prisma.sellerMedicine.count({ where: { sellerId } });
 
-    //  Orders for seller's medicines
     const orderItems = await prisma.orderItem.findMany({
-        where: { sellerMedicine: { sellerId } },
-        include: { sellerMedicine: true },
+        where: { 
+            sellerMedicine: { sellerId } 
+        },
+        include: { 
+            order: true 
+        },
     });
 
-    const totalOrders = orderItems.length;
+    const deliveredItems = orderItems.filter(item => item.order.status === "DELIVERED");
+    
 
-    //  Revenue (sum of price * quantity)
-    const totalRevenue = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const totalRevenue = deliveredItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-    //  Reviews for seller's medicines
+    const totalOrders = orderItems.length; 
+
     const medicines = await prisma.sellerMedicine.findMany({
         where: { sellerId },
         include: { medicine: { include: { reviews: true } } },
@@ -134,7 +178,7 @@ const getSellerStats = async (sellerId: string) => {
         data: {
             totalMedicines,
             totalOrders,
-            totalRevenue,
+            totalRevenue, // Ekhon Admin er sathe match korbe
             totalReviews,
             averageRating: Number(averageRating.toFixed(2)),
         },
@@ -142,37 +186,46 @@ const getSellerStats = async (sellerId: string) => {
 };
 
 const getSellerChartData = async (sellerId: string) => {
-    // Orders grouped by date
     const orders = await prisma.orderItem.findMany({
         where: { sellerMedicine: { sellerId } },
-        include: { 
-            order: true, 
-            sellerMedicine: { include: { medicine: true } } 
+        include: {
+            order: true,
+            sellerMedicine: { include: { medicine: true } }
         },
     });
 
-    const ordersOverTime: Record<string, number> = {};
-    const revenuePerMedicine: Record<string, number> = {};
+    const ordersMap: Record<string, number> = {};
+    const revenueMap: Record<string, number> = {};
 
     orders.forEach((item) => {
         const date = item.order.createdAt.toISOString().split("T")[0];
-        ordersOverTime[date] = (ordersOverTime[date] || 0) + 1;
+        ordersMap[date] = (ordersMap[date] || 0) + 1;
 
         if (item.order.status === "DELIVERED") {
             const medName = item.sellerMedicine.medicine.name;
-            revenuePerMedicine[medName] = (revenuePerMedicine[medName] || 0) + (item.price * item.quantity);
+            revenueMap[medName] = (revenueMap[medName] || 0) + (item.price * item.quantity);
         }
     });
+
+
+    const ordersOverTime = Object.entries(ordersMap)
+        .map(([date, count]) => ({ date, count }))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    const revenuePerMedicine = Object.entries(revenueMap).map(([name, value]) => ({
+        name,
+        value,
+    }));
 
     const medicines = await prisma.sellerMedicine.findMany({
         where: { sellerId },
         include: { medicine: true },
     });
 
-    const stockPerMedicine: Record<string, number> = {};
-    medicines.forEach((sm) => {
-        stockPerMedicine[sm.medicine.name] = sm.stockQuantity;
-    });
+    const stockPerMedicine = medicines.map((sm) => ({
+        name: sm.medicine.name,
+        stock: sm.stockQuantity,
+    }));
 
     return {
         success: true,
@@ -186,9 +239,8 @@ const getSellerChartData = async (sellerId: string) => {
     };
 };
 
-
 export const sellerService = {
     getSellerMedicines,
-    getSellerStats, 
+    getSellerStats,
     getSellerChartData
 }
