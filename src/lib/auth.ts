@@ -5,55 +5,83 @@ import { prisma } from "./prisma";
 import nodemailer from "nodemailer"
 
 const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false, // Use true for port 465, false for port 587
-    auth: {
-        user: process.env.APP_USER,
-        pass: process.env.APP_PASS
-    }
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false, // Use true for port 465, false for port 587
+  auth: {
+    user: process.env.APP_USER,
+    pass: process.env.APP_PASS
+  }
 });
 
 export const auth = betterAuth({
-    database: prismaAdapter(prisma, {
-        provider: "postgresql",
-    }),
-    trustedOrigins: [process.env.APP_URL!],
-    emailAndPassword: {
-        enabled: true,
-        autoSignIn: false,
-        requireEmailVerification: false
+  database: prismaAdapter(prisma, {
+    provider: "postgresql",
+  }),
+  // advanced: {
+  //   cookies: {
+  //     state: {
+  //       attributes: {
+  //         sameSite: "none",
+  //         secure: true,
+  //       }
+  //     }
+  //   }
+  // },
+   session: {
+    cookieCache: {
+      enabled: true,
+      maxAge: 5 * 60, // 5 minutes
     },
-    user: {
-        additionalFields: {
-            role: {
-                type: "string",
-                default: "CUSTOMER",
-                required: false
-            },
-            status: {
-                type: "string",
-                default: "ACTIVE",
-                required: false
-            },
-            phone: {
-                type: "string",
-                required: false
-            }
+  },
+  advanced: {
+    cookiePrefix: "better-auth",
+    useSecureCookies: process.env.NODE_ENV === "production",
+    crossSubDomainCookies: {
+      enabled: false,
+    },
+    disableCSRFCheck: true, // Allow requests without Origin header (Postman, mobile apps, etc.)
+  },
+  trustedOrigins: [
+    "https://medicorner-client.vercel.app", 
+    "https://medicorner-client.vercel.app/",
+    "http://localhost:3000"
+  ],
+  emailAndPassword: {
+    enabled: true,
+    autoSignIn: false,
+    requireEmailVerification: false
+  },
+  user: {
+    additionalFields: {
+      role: {
+        type: "string",
+        default: "CUSTOMER",
+        required: false
+      },
+      status: {
+        type: "string",
+        default: "ACTIVE",
+        required: false
+      },
+      phone: {
+        type: "string",
+        required: false
+      }
 
-        }
-    },
-    emailVerification: {
-        sendOnSignUp: true,
-        autoSignInAfterVerification: true,
-        sendVerificationEmail: async ({ user, url, token }, request) => {
-            try {
-                const verificationUrl = `${process.env.APP_URL}/verify-email?token=${token}`
-                const info = await transporter.sendMail({
-                    from: '"MediCorner" <medicroner@gmail.com>',
-                    to: user.email,
-                    subject: "Please verify email",
-                    html: `
+    }
+  },
+  emailVerification: {
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, url, token }, request) => {
+      try {
+        const verificationUrl = `${process.env.APP_URL}/verify-email?token=${token}`
+        const info = await transporter.sendMail({
+          from: '"MediCorner" <medicroner@gmail.com>',
+          to: user.email,
+          subject: "Please verify email",
+          html: `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -140,21 +168,21 @@ export const auth = betterAuth({
 </body>
 </html>
 `
-                })
+        })
 
-                console.log("Message sent:", info.messageId)
-            } catch (error: any) {
-                console.log({ error: error });
-                throw error;
-            }
-        },
+        console.log("Message sent:", info.messageId)
+      } catch (error: any) {
+        console.log({ error: error });
+        throw error;
+      }
     },
-    socialProviders: {
-        google: {
-            prompt: "select_account consent",
-            accessType: "offline",
-            clientId: process.env.GOOGLE_CLIENT_ID as string,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-        },
+  },
+  socialProviders: {
+    google: {
+      prompt: "select_account consent",
+      accessType: "offline",
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
     },
+  },
 });
