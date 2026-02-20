@@ -1,7 +1,6 @@
 import { Request } from 'express';
-import multer, { StorageEngine } from 'multer';
-import { v2 as cloudinary, UploadApiResponse, UploadApiErrorResponse } from 'cloudinary';
-import fs from 'fs';
+import multer from 'multer';
+import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 
 cloudinary.config({
     cloud_name: process.env.CLOUD_NAME as string,
@@ -9,47 +8,28 @@ cloudinary.config({
     api_secret: process.env.CLOUD_API_SECRET as string,
 });
 
-const storage: StorageEngine = multer.diskStorage({
-    destination: function (
-        req: Request,
-        file: Express.Multer.File,
-        cb: (error: Error | null, destination: string) => void
-    ) {
-        cb(null, 'uploads/');
-    },
-    filename: function (
-        req: Request,
-        file: Express.Multer.File,
-        cb: (error: Error | null, filename: string) => void
-    ) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        cb(null, `${uniqueSuffix}-${file.originalname}`);
-    }
-});
+// Vercel-এর জন্য memoryStorage ব্যবহার করতে হবে
+const storage = multer.memoryStorage();
 
 export const upload = multer({
     storage: storage,
-    limits: { fileSize: 5 * 1024 * 1024 } 
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
 
-export const uploadToCloudinary = async (filePath: string): Promise<string> => {
-    try {
-        const result: UploadApiResponse = await cloudinary.uploader.upload(filePath, {
-            folder: 'medicines',
-        });
+// এই ফাংশনটি এখন সরাসরি Buffer গ্রহণ করবে
+export const uploadToCloudinary = async (file: Express.Multer.File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+            {
+                folder: 'medicines',
+            },
+            (error, result) => {
+                if (error) return reject(new Error(`Cloudinary upload failed: ${error.message}`));
+                resolve((result as UploadApiResponse).secure_url);
+            }
+        );
 
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-        }
-
-        return result.secure_url;
-    } catch (error) {
-
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-        }
-
-        const uploadError = error as UploadApiErrorResponse;
-        throw new Error(`Cloudinary upload failed: ${uploadError.message}`);
-    }
+        // ফাইলের buffer-কে stream-এ কনভার্ট করে আপলোড করা হচ্ছে
+        uploadStream.end(file.buffer);
+    });
 };

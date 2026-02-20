@@ -3,10 +3,35 @@ import { medicineServices } from "./medicine.service";
 import { AppError } from "../../errors/AppError";
 
 
+// const createMedicine = async (req: Request, res: Response, next: NextFunction) => {
+//     try {
+//         const sellerId = req.user!.id;
+//         const file = await req.file as Express.Multer.File;
+
+//         if (!file) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Thumbnail image is required",
+//             });
+//         }
+
+//         const result = await medicineServices.addMedicineWithInventory(
+//             sellerId,
+//             req.body, 
+//             file
+//         );
+
+//         res.status(result.statusCode).json(result);
+//     } catch (error) {
+//         next(error);
+//     }
+// };
+
 const createMedicine = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const sellerId = req.user!.id;
-        const file = await req.file as Express.Multer.File;
+        
+        const file = req.file as Express.Multer.File;
 
         if (!file) {
             return res.status(400).json({
@@ -14,10 +39,12 @@ const createMedicine = async (req: Request, res: Response, next: NextFunction) =
                 message: "Thumbnail image is required",
             });
         }
+
+        
         const result = await medicineServices.addMedicineWithInventory(
             sellerId,
             req.body, 
-            file.path
+            file
         );
 
         res.status(result.statusCode).json(result);

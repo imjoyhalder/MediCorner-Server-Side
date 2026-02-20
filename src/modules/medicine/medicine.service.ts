@@ -3,7 +3,7 @@ import { prisma } from "../../lib/prisma";
 import { Prisma } from "../../../generated/prisma/client";
 import { uploadToCloudinary } from "../../utils/fileUpload";
 
-const addMedicineWithInventory = async (sellerId: string, payload: any, filePath: string) => {
+const addMedicineWithInventory = async (sellerId: string, payload: any, file: Express.Multer.File) => {
     try {
         const {
         name,
@@ -22,7 +22,7 @@ const addMedicineWithInventory = async (sellerId: string, payload: any, filePath
         };
     }
 
-    const imageUrl: string = await uploadToCloudinary(filePath);
+    const imageUrl: string = await uploadToCloudinary(file);
 
     return prisma.$transaction(async (tx) => {
         const category = await tx.medicineCategory.findUnique({
