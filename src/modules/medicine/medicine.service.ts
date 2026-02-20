@@ -328,10 +328,10 @@ const getAllMedicines = async (payload: any) => {
         });
     }
 
-    // Sorting Logic: যদি sortBy না থাকে তবে ডিফল্টভাবে createdAt অনুযায়ী desc হবে
+    
     const validSortFields = ["name", "brandName", "manufacturer", "id", "createdAt"];
     const activeSortBy = validSortFields.includes(sortBy) ? sortBy : "createdAt"; 
-    const activeSortOrder = sortOrder === "asc" ? "asc" : "desc"; // ডিফল্ট desc যাতে নতুন ডাটা আগে আসে
+    const activeSortOrder = sortOrder === "asc" ? "asc" : "desc"; 
 
     const take = Number(limit) || 12;
     const skip = (Number(page || 1) - 1) * take;
@@ -340,7 +340,6 @@ const getAllMedicines = async (payload: any) => {
         take,
         skip,
         where: andConditions.length > 0 ? { AND: andConditions } : {},
-        // এখানে activeSortBy এখন 'createdAt' এবং activeSortOrder 'desc' হিসেবে কাজ করবে
         orderBy: { [activeSortBy]: activeSortOrder }, 
         include: {
             category: true,
