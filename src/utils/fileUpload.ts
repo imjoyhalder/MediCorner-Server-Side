@@ -8,7 +8,6 @@ cloudinary.config({
     api_secret: process.env.CLOUD_API_SECRET as string,
 });
 
-// Vercel-এর জন্য memoryStorage ব্যবহার করতে হবে
 const storage = multer.memoryStorage();
 
 export const upload = multer({
@@ -16,7 +15,6 @@ export const upload = multer({
     limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
 
-// এই ফাংশনটি এখন সরাসরি Buffer গ্রহণ করবে
 export const uploadToCloudinary = async (file: Express.Multer.File): Promise<string> => {
     return new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
@@ -29,7 +27,6 @@ export const uploadToCloudinary = async (file: Express.Multer.File): Promise<str
             }
         );
 
-        // ফাইলের buffer-কে stream-এ কনভার্ট করে আপলোড করা হচ্ছে
         uploadStream.end(file.buffer);
     });
 };
