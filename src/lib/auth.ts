@@ -28,7 +28,7 @@ export const auth = betterAuth({
   //     }
   //   }
   // },
-   session: {
+  session: {
     cookieCache: {
       enabled: true,
       maxAge: 5 * 60, // 5 minutes
@@ -43,7 +43,7 @@ export const auth = betterAuth({
     disableCSRFCheck: true, // Allow requests without Origin header (Postman, mobile apps, etc.)
   },
   trustedOrigins: [
-    "https://medicorner-client.vercel.app", 
+    "https://medicorner-client.vercel.app",
     "https://medicorner-client.vercel.app/",
     "http://localhost:3000"
   ],
