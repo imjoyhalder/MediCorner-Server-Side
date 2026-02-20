@@ -13,14 +13,14 @@ const addMedicineWithInventory = async (sellerId: string, payload: any, filePath
         batchNumber,
     } = payload;
 
-    // if (!name || !brandName || !categoryId || !price || !batchNumber) {
-    //     return {
-    //         success: false,
-    //         statusCode: 400,
-    //         message: "Required fields are missing",
-    //         data: null,
-    //     };
-    // }
+    if (!name || !brandName || !categoryId || !price || !batchNumber) {
+        return {
+            success: false,
+            statusCode: 400,
+            message: "Required fields are missing",
+            data: null,
+        };
+    }
 
     const imageUrl: string = await uploadToCloudinary(filePath);
 
@@ -103,101 +103,101 @@ const addMedicineWithInventory = async (sellerId: string, payload: any, filePath
 };
 
 
-const getAllMedicines = async (payload: any) => {
-    const {
-        search,
-        categoryId,
-        manufacturer,
-        minPrice,
-        maxPrice,
-        page,
-        limit,
-        sortBy,
-        sortOrder,
-    } = payload;
+// const getAllMedicines = async (payload: any) => {
+//     const {
+//         search,
+//         categoryId,
+//         manufacturer,
+//         minPrice,
+//         maxPrice,
+//         page,
+//         limit,
+//         sortBy,
+//         sortOrder,
+//     } = payload;
 
-    const andConditions: any[] = [];
+//     const andConditions: any[] = [];
 
-    // Search Logic
-    if (search) {
-        andConditions.push({
-            OR: [
-                { name: { contains: search, mode: "insensitive" } },
-                { brandName: { contains: search, mode: "insensitive" } },
-                { genericName: { contains: search, mode: "insensitive" } },
-            ],
-        });
-    }
+//     // Search Logic
+//     if (search) {
+//         andConditions.push({
+//             OR: [
+//                 { name: { contains: search, mode: "insensitive" } },
+//                 { brandName: { contains: search, mode: "insensitive" } },
+//                 { genericName: { contains: search, mode: "insensitive" } },
+//             ],
+//         });
+//     }
 
-    if (categoryId && categoryId !== 'all') andConditions.push({ categoryId });
+//     if (categoryId && categoryId !== 'all') andConditions.push({ categoryId });
 
-    if (manufacturer && manufacturer !== 'all') {
-        andConditions.push({
-            manufacturer: { contains: manufacturer, mode: "insensitive" },
-        });
-    }
+//     if (manufacturer && manufacturer !== 'all') {
+//         andConditions.push({
+//             manufacturer: { contains: manufacturer, mode: "insensitive" },
+//         });
+//     }
 
-    // Price Filter Logic
-    const min = minPrice ? Number(minPrice) : undefined;
-    const max = maxPrice ? Number(maxPrice) : undefined;
+//     // Price Filter Logic
+//     const min = minPrice ? Number(minPrice) : undefined;
+//     const max = maxPrice ? Number(maxPrice) : undefined;
 
-    if (min !== undefined || max !== undefined) {
-        andConditions.push({
-            sellers: {
-                some: {
-                    price: {
-                        ...(min !== undefined && { gte: min }),
-                        ...(max !== undefined && { lte: max }),
-                    },
-                },
-            },
-        });
-    }
+//     if (min !== undefined || max !== undefined) {
+//         andConditions.push({
+//             sellers: {
+//                 some: {
+//                     price: {
+//                         ...(min !== undefined && { gte: min }),
+//                         ...(max !== undefined && { lte: max }),
+//                     },
+//                 },
+//             },
+//         });
+//     }
 
-    const validSortFields = ["name", "brandName", "manufacturer", "id"];
-    const activeSortBy = validSortFields.includes(sortBy) ? sortBy : "name";
-    const activeSortOrder = sortOrder === "desc" ? "desc" : "asc";
+//     const validSortFields = ["name", "brandName", "manufacturer", "id"];
+//     const activeSortBy = validSortFields.includes(sortBy) ? sortBy : "name";
+//     const activeSortOrder = sortOrder === "desc" ? "desc" : "asc";
 
-    const take = Number(limit) || 12;
-    const skip = (Number(page || 1) - 1) * take;
+//     const take = Number(limit) || 12;
+//     const skip = (Number(page || 1) - 1) * take;
 
-    const data = await prisma.medicine.findMany({
-        take,
-        skip,
-        where: andConditions.length > 0 ? { AND: andConditions } : {},
-        orderBy: { [activeSortBy]: activeSortOrder },
-        include: {
-            category: true,
-            reviews: true,
-            sellers: {
-                select: {
-                    id: true,
-                    price: true,
-                    expiryDate: true,
-                    stockQuantity: true,
-                    sellerId: true,
-                }
-            }
-        },
-    });
+//     const data = await prisma.medicine.findMany({
+//         take,
+//         skip,
+//         where: andConditions.length > 0 ? { AND: andConditions } : {},
+//         orderBy: { [activeSortBy]: activeSortOrder },
+//         include: {
+//             category: true,
+//             reviews: true,
+//             sellers: {
+//                 select: {
+//                     id: true,
+//                     price: true,
+//                     expiryDate: true,
+//                     stockQuantity: true,
+//                     sellerId: true,
+//                 }
+//             }
+//         },
+//     });
 
-    const total = await prisma.medicine.count({
-        where: andConditions.length > 0 ? { AND: andConditions } : {},
-    });
+//     const total = await prisma.medicine.count({
+//         where: andConditions.length > 0 ? { AND: andConditions } : {},
+//     });
 
-    return {
-        success: true,
-        statusCode: 200,
-        message: "Medicines fetched successfully",
-        data,
-        pagination: {
-            total,
-            page: Number(page) || 1,
-            limit: take,
-            totalPages: Math.ceil(total / take),
-        },
-    };
-};
+//     return {
+//         success: true,
+//         statusCode: 200,
+//         message: "Medicines fetched successfully",
+//         data,
+//         pagination: {
+//             total,
+//             page: Number(page) || 1,
+//             limit: take,
+//             totalPages: Math.ceil(total / take),
+//         },
+//     };
+// };
 
 // seller only can access his posted medicine 
 // const getAllMedicinesBySeller = async (payload: any) => {
@@ -276,6 +276,104 @@ const getAllMedicines = async (payload: any) => {
 //         },
 //     };
 // };
+
+const getAllMedicines = async (payload: any) => {
+    const {
+        search,
+        categoryId,
+        manufacturer,
+        minPrice,
+        maxPrice,
+        page,
+        limit,
+        sortBy,
+        sortOrder,
+    } = payload;
+
+    const andConditions: any[] = [];
+
+    // Search Logic
+    if (search) {
+        andConditions.push({
+            OR: [
+                { name: { contains: search, mode: "insensitive" } },
+                { brandName: { contains: search, mode: "insensitive" } },
+                { genericName: { contains: search, mode: "insensitive" } },
+            ],
+        });
+    }
+
+    if (categoryId && categoryId !== 'all') andConditions.push({ categoryId });
+
+    if (manufacturer && manufacturer !== 'all') {
+        andConditions.push({
+            manufacturer: { contains: manufacturer, mode: "insensitive" },
+        });
+    }
+
+    // Price Filter Logic
+    const min = minPrice ? Number(minPrice) : undefined;
+    const max = maxPrice ? Number(maxPrice) : undefined;
+
+    if (min !== undefined || max !== undefined) {
+        andConditions.push({
+            sellers: {
+                some: {
+                    price: {
+                        ...(min !== undefined && { gte: min }),
+                        ...(max !== undefined && { lte: max }),
+                    },
+                },
+            },
+        });
+    }
+
+    // Sorting Logic: যদি sortBy না থাকে তবে ডিফল্টভাবে createdAt অনুযায়ী desc হবে
+    const validSortFields = ["name", "brandName", "manufacturer", "id", "createdAt"];
+    const activeSortBy = validSortFields.includes(sortBy) ? sortBy : "createdAt"; 
+    const activeSortOrder = sortOrder === "asc" ? "asc" : "desc"; // ডিফল্ট desc যাতে নতুন ডাটা আগে আসে
+
+    const take = Number(limit) || 12;
+    const skip = (Number(page || 1) - 1) * take;
+
+    const data = await prisma.medicine.findMany({
+        take,
+        skip,
+        where: andConditions.length > 0 ? { AND: andConditions } : {},
+        // এখানে activeSortBy এখন 'createdAt' এবং activeSortOrder 'desc' হিসেবে কাজ করবে
+        orderBy: { [activeSortBy]: activeSortOrder }, 
+        include: {
+            category: true,
+            reviews: true,
+            sellers: {
+                select: {
+                    id: true,
+                    price: true,
+                    expiryDate: true,
+                    stockQuantity: true,
+                    sellerId: true,
+                }
+            }
+        },
+    });
+
+    const total = await prisma.medicine.count({
+        where: andConditions.length > 0 ? { AND: andConditions } : {},
+    });
+
+    return {
+        success: true,
+        statusCode: 200,
+        message: "Medicines fetched successfully",
+        data,
+        pagination: {
+            total,
+            page: Number(page) || 1,
+            limit: take,
+            totalPages: Math.ceil(total / take),
+        },
+    };
+};
 
 const getSingleMedicine = async (id: string) => {
     if (!id) {

@@ -28,7 +28,7 @@ enum OrderStatus {
 model User {
   id            String    @id
   name          String
-  email         String    
+  email         String
   emailVerified Boolean   @default(false)
   image         String?
   createdAt     DateTime  @default(now())
@@ -117,6 +117,9 @@ model Medicine {
   isOtc        Boolean @default(true)
   thumbnail    String?
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt @default(now())
+
   categoryId String
   category   MedicineCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
@@ -140,6 +143,9 @@ model SellerMedicine {
 
   cartItems  CartItem[]
   orderItems OrderItem[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt @default(now())
 
   @@unique([sellerId, medicineId])
 }
@@ -169,7 +175,6 @@ model CartItem {
 
   @@unique([cartId, sellerMedicineId])
 }
-
 
 /// ORDER
 
