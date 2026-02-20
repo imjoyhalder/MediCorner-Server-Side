@@ -1,12 +1,11 @@
 
 import { prisma } from "../../lib/prisma";
 import { Prisma } from "../../../generated/prisma/client";
+import { uploadToCloudinary } from "../../utils/fileUpload";
 
-const addMedicineWithInventory = async (
-    sellerId: string,
-    payload: any
-) => {
-    const {
+const addMedicineWithInventory = async (sellerId: string, payload: any, filePath: string) => {
+    try {
+        const {
         name,
         brandName,
         categoryId,
@@ -14,14 +13,16 @@ const addMedicineWithInventory = async (
         batchNumber,
     } = payload;
 
-    if (!name || !brandName || !categoryId || !price || !batchNumber) {
-        return {
-            success: false,
-            statusCode: 400,
-            message: "Required fields are missing",
-            data: null,
-        };
-    }
+    // if (!name || !brandName || !categoryId || !price || !batchNumber) {
+    //     return {
+    //         success: false,
+    //         statusCode: 400,
+    //         message: "Required fields are missing",
+    //         data: null,
+    //     };
+    // }
+
+    const imageUrl: string = await uploadToCloudinary(filePath);
 
     return prisma.$transaction(async (tx) => {
         const category = await tx.medicineCategory.findUnique({
@@ -51,6 +52,7 @@ const addMedicineWithInventory = async (
                     description: payload.description,
                     categoryId,
                     isOtc: true,
+                    thumbnail: imageUrl,
                 },
             });
         }
@@ -75,8 +77,8 @@ const addMedicineWithInventory = async (
             data: {
                 sellerId,
                 medicineId: medicine.id,
-                price,
-                stockQuantity: payload.stockQuantity ?? 0,
+                price: Number(price),
+                stockQuantity: Number(payload.stockQuantity) ?? 0,
                 batchNumber,
                 expiryDate: payload.expiryDate,
                 isAvailable: true,
@@ -86,10 +88,18 @@ const addMedicineWithInventory = async (
         return {
             success: true,
             statusCode: 201,
-            message: "Medicine added successfully",
+            message: "Medicine uploaded successfully",
             data: { medicine, inventory },
         };
     });
+    } catch (error: any) {
+        return {
+            success: false,
+            statusCode: 500,
+            message: error.message || "Something went wrong during upload",
+            data: null,
+        };
+    }
 };
 
 

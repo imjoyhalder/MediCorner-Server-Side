@@ -6,9 +6,18 @@ import { AppError } from "../../errors/AppError";
 const createMedicine = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const sellerId = req.user!.id;
+        const file = await req.file as Express.Multer.File;
+
+        if (!file) {
+            return res.status(400).json({
+                success: false,
+                message: "Thumbnail image is required",
+            });
+        }
         const result = await medicineServices.addMedicineWithInventory(
             sellerId,
-            req.body
+            req.body, 
+            file.path
         );
 
         res.status(result.statusCode).json(result);
